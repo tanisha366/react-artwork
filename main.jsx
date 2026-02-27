@@ -1,3 +1,6 @@
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Mousewheel } from "swiper/modules";
+import "swiper/css";
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { createRoot } from 'react-dom/client';
@@ -224,14 +227,18 @@ function buildTitlePlan({ sources, category, seed }) {
   return titles;
 }
 
-// ========== OPTIMIZED TILE IMAGE COMPONENT WITH BRIGHTNESS FIX ==========
-function TileImage({ src, alt, index, fallbackPool, category }) {
+// ========== OPTIMIZED TILE IMAGE COMPONENT ==========
+function TileImage({ src, alt, index, fallbackPool }) {
   const [resolvedSrc, setResolvedSrc] = useState(src);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const attempts = useRef(0);
   const imgRef = useRef(null);
   const containerRef = useRef(null);
+
+  const sizes = useMemo(() => {
+    return '(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw';
+  }, []);
 
   useEffect(() => {
     setResolvedSrc(src);
@@ -265,12 +272,6 @@ function TileImage({ src, alt, index, fallbackPool, category }) {
     setResolvedSrc(createColorfulFallback(hashStringToUint32(src + index + attempts.current)));
   };
 
-  // Apply extra brightness to landscape images
-  const imageStyle = category === 'Landscape' ? {
-    filter: 'brightness(1.1) contrast(1.05) saturate(1.08)',
-    transition: 'filter 0.3s ease'
-  } : {};
-
   return (
     <div ref={containerRef} className="tile-image-container">
       <img
@@ -285,7 +286,7 @@ function TileImage({ src, alt, index, fallbackPool, category }) {
         referrerPolicy="no-referrer"
         onLoad={handleLoad}
         onError={handleError}
-        style={imageStyle}
+        sizes={sizes}
       />
       {!isLoaded && !hasError && (
         <div className="image-placeholder">
@@ -379,15 +380,14 @@ function LoadingScreen({ onComplete }) {
 // ========== MAIN APP ==========
 function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
   const [direction, setDirection] = useState('next');
   const [activeTile, setActiveTile] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
+  const swiperRef = useRef(null);
 
   const shouldReduceMotion = useReducedMotion() || false;
-  const galleryScrollRef = useRef(null);
   const headerRef = useRef(null);
   const titleRef = useRef(null);
   const mainContainerRef = useRef(null);
@@ -403,71 +403,152 @@ function App() {
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { setRefreshKey(Date.now() + Math.random() * 1e6); }, []);
 
+  // ========== WHEEL EVENT STOP PROPAGATION FOR SCROLLABLE AREAS ==========
+  useEffect(() => {
+    if (!mounted || loading) return;
+
+    const handleWheel = (e) => {
+      const isInsideScrollable = e.target.closest('.collage-scroll');
+      if (isInsideScrollable) {
+        e.stopPropagation(); // Allow vertical scroll inside
+      }
+    };
+
+    document.addEventListener('wheel', handleWheel, { passive: true, capture: true });
+    return () => {
+      document.removeEventListener('wheel', handleWheel, { capture: true });
+    };
+  }, [mounted, loading]);
+
+  // ========== ALL useMemo HOOKS (for current slide) ==========
   const currentArtwork = artworks[currentIndex];
 
-  const nextSlide = () => {
-    if (isAnimating) return;
-    const tl = gsap.timeline({
-      onStart: () => setIsAnimating(true),
-      onComplete: () => setIsAnimating(false)
-    });
-    tl.to('.masonry-grid', {
-      x: -80,
-      opacity: 0,
-      rotation: -2,
-      scale: 0.98,
-      duration: 0.4,
-      ease: 'power2.in',
-      force3D: true,
-      onComplete: () => {
-        setDirection('next');
-        setCurrentIndex(p => (p + 1) % artworks.length);
-        gsap.set('.masonry-grid', { x: 80, opacity: 0, rotation: 2, scale: 0.98 });
-        tl.to('.masonry-grid', {
-          x: 0,
-          opacity: 1,
-          rotation: 0,
-          scale: 1,
-          duration: 0.6,
-          ease: 'power3.out',
-          stagger: { amount: 0.3, from: 'start' },
-          force3D: true
-        });
-      }
-    });
-  };
+  const sectionImages = useMemo(() => {
+    try {
+      const seed = hashStringToUint32(currentArtwork.category + currentIndex);
+      return getSafeImagesForCategory(currentArtwork.category, imageCount, seed);
+    } catch {
+      return Array(imageCount).fill(0).map((_, i) => createColorfulFallback(i));
+    }
+  }, [currentArtwork.category, currentIndex, imageCount, refreshKey]);
 
-  const prevSlide = () => {
-    if (isAnimating) return;
-    const tl = gsap.timeline({
-      onStart: () => setIsAnimating(true),
-      onComplete: () => setIsAnimating(false)
+  const captionPlan = useMemo(() => buildTitlePlan({
+    sources: sectionImages,
+    category: currentArtwork.category,
+    seed: (currentIndex+1)*99173 + refreshKey
+  }), [sectionImages, currentArtwork.category, currentIndex, refreshKey]);
+
+  const masonryPlan = useMemo(() => buildMasonryColumns({
+    sources: sectionImages,
+    columns: masonryColumns,
+    seed: (currentIndex+1)*4242 + refreshKey
+  }), [sectionImages, masonryColumns, currentIndex, refreshKey]);
+
+  // GSAP initial load animation
+  useEffect(() => {
+    if (!mounted || loading || !masonryPlan) return;
+
+    const ctx = gsap.context(() => {
+      const masterTl = gsap.timeline();
+
+      masterTl.fromTo(headerRef.current,
+        { y: -100, opacity: 0, scale: 0.8, filter: 'blur(10px)' },
+        { y: 0, opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.2, ease: 'power3.out', force3D: true },
+        0
+      );
+
+      masterTl.fromTo(titleRef.current,
+        { scale: 0.5, opacity: 0, rotationX: 30, filter: 'blur(15px)' },
+        { scale: 1, opacity: 1, rotationX: 0, filter: 'blur(0px)', duration: 1.4, ease: 'backOut(1.7)', force3D: true },
+        0.2
+      );
+
+      masterTl.fromTo('.masonry-item',
+        { y: 80, opacity: 0, scale: 0.7, rotation: gsap.utils.random(-15, 15), filter: 'blur(15px)' },
+        { y: 0, opacity: 1, scale: 1, rotation: 0, filter: 'blur(0px)', duration: 1.2,
+          stagger: { amount: 1.2, from: 'random', grid: [masonryColumns, Math.ceil(IMAGES_PER_SECTION / masonryColumns)], ease: 'power2.out' },
+          ease: 'backOut(1.2)', force3D: true, clearProps: 'transform, filter' },
+        0.3
+      );
+
+      masterTl.to('.art-bg', { rotation: 360, scale: 1.1, duration: 60, repeat: -1, ease: 'none', force3D: true }, 0);
     });
-    tl.to('.masonry-grid', {
-      x: 80,
-      opacity: 0,
-      rotation: 2,
-      scale: 0.98,
-      duration: 0.4,
-      ease: 'power2.in',
-      force3D: true,
-      onComplete: () => {
-        setDirection('prev');
-        setCurrentIndex(p => (p - 1 + artworks.length) % artworks.length);
-        gsap.set('.masonry-grid', { x: -80, opacity: 0, rotation: -2, scale: 0.98 });
-        tl.to('.masonry-grid', {
-          x: 0,
-          opacity: 1,
-          rotation: 0,
-          scale: 1,
-          duration: 0.6,
-          ease: 'power3.out',
-          stagger: { amount: 0.3, from: 'start' },
-          force3D: true
+
+    return () => ctx.revert();
+  }, [mounted, loading, masonryPlan, masonryColumns]);
+
+  // ========== SCROLL ANIMATIONS (uses active scroll container) ==========
+  useEffect(() => {
+    if (!mounted || loading) return;
+
+    const ctx = gsap.context(() => {
+      const activeScroll = document.querySelector('.swiper-slide-active .collage-scroll');
+      if (!activeScroll) return;
+
+      gsap.to('.art-bg', {
+        scrollTrigger: {
+          trigger: activeScroll,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 1.5,
+          scroller: activeScroll,
+        },
+        y: 200,
+        rotation: 15,
+        scale: 1.3,
+        force3D: true
+      });
+
+      gsap.utils.toArray('.swiper-slide-active .masonry-item').forEach((item) => {
+        ScrollTrigger.create({
+          trigger: item,
+          start: 'top 85%',
+          end: 'bottom 15%',
+          toggleActions: 'play reverse play reverse',
+          scroller: activeScroll,
+          onEnter: () => gsap.fromTo(item,
+            { opacity: 0.3, y: 30, scale: 0.95, filter: 'blur(5px)' },
+            { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.8, ease: 'power3.out', force3D: true }
+          ),
+          onLeave: () => gsap.to(item, { opacity: 0.3, y: 20, scale: 0.98, filter: 'blur(3px)', duration: 0.4, force3D: true }),
+          onEnterBack: () => gsap.fromTo(item,
+            { opacity: 0.3, y: 25, scale: 0.96, filter: 'blur(4px)' },
+            { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.7, ease: 'power2.out', force3D: true }
+          )
         });
-      }
+      });
     });
-  };
+
+    ScrollTrigger.refresh();
+    return () => ctx.revert();
+  }, [mounted, loading, currentIndex]);
+
+  // Hover animations
+  useEffect(() => {
+    itemsRef.current.forEach((item) => {
+      if (!item) return;
+      const hoverTl = gsap.timeline({ paused: true });
+      hoverTl.to(item, {
+        y: -6, scale: 1.02,
+        boxShadow: '0 20px 30px -10px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.2)',
+        borderColor: 'rgba(255,255,255,0.3)', duration: 0.3, ease: 'power2.out', force3D: true
+      })
+      .to(item.querySelector('img'), { scale: 1.05, duration: 0.4, ease: 'power2.out', force3D: true }, 0)
+      .to(item.querySelector('.absolute.bottom-3'), { y: -3, opacity: 1, duration: 0.3, ease: 'power2.out', force3D: true }, 0);
+
+      item.addEventListener('mouseenter', () => hoverTl.play());
+      item.addEventListener('mouseleave', () => hoverTl.reverse());
+    });
+
+    return () => {
+      itemsRef.current.forEach((item) => {
+        if (item) {
+          item.removeEventListener('mouseenter', () => {});
+          item.removeEventListener('mouseleave', () => {});
+        }
+      });
+    };
+  }, [masonryPlan, currentIndex]);
 
   const openModal = (item) => {
     setActiveTile({
@@ -500,227 +581,6 @@ function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // ========== ALL useMemo HOOKS ==========
-  const sectionImages = useMemo(() => {
-    try {
-      const seed = hashStringToUint32(currentArtwork.category + currentIndex);
-      return getSafeImagesForCategory(currentArtwork.category, imageCount, seed);
-    } catch {
-      return Array(imageCount).fill(0).map((_, i) => createColorfulFallback(i));
-    }
-  }, [currentArtwork.category, currentIndex, imageCount, refreshKey]);
-
-  const captionPlan = useMemo(() => buildTitlePlan({
-    sources: sectionImages,
-    category: currentArtwork.category,
-    seed: (currentIndex+1)*99173 + refreshKey
-  }), [sectionImages, currentArtwork.category, currentIndex, refreshKey]);
-
-  const masonryPlan = useMemo(() => buildMasonryColumns({
-    sources: sectionImages,
-    columns: masonryColumns,
-    seed: (currentIndex+1)*4242 + refreshKey
-  }), [sectionImages, masonryColumns, currentIndex, refreshKey]);
-
-  // ========== GSAP INITIAL LOAD ANIMATION ==========
-  useEffect(() => {
-    if (!mounted || loading || !masonryPlan) return;
-
-    const ctx = gsap.context(() => {
-      const masterTl = gsap.timeline();
-
-      masterTl.fromTo(headerRef.current,
-        { 
-          y: -100, 
-          opacity: 0,
-          scale: 0.8,
-          filter: 'blur(10px)'
-        },
-        { 
-          y: 0, 
-          opacity: 1, 
-          scale: 1,
-          filter: 'blur(0px)',
-          duration: 1.2, 
-          ease: 'power3.out',
-          force3D: true 
-        },
-        0
-      );
-
-      masterTl.fromTo(titleRef.current,
-        { 
-          scale: 0.5, 
-          opacity: 0,
-          rotationX: 30,
-          filter: 'blur(15px)'
-        },
-        { 
-          scale: 1, 
-          opacity: 1,
-          rotationX: 0,
-          filter: 'blur(0px)',
-          duration: 1.4, 
-          ease: 'backOut(1.7)',
-          force3D: true 
-        },
-        0.2
-      );
-
-      masterTl.fromTo('.masonry-item',
-        { 
-          y: 80,
-          opacity: 0,
-          scale: 0.7,
-          rotation: gsap.utils.random(-15, 15),
-          filter: 'blur(15px)'
-        },
-        { 
-          y: 0,
-          opacity: 1,
-          scale: 1,
-          rotation: 0,
-          filter: 'blur(0px)',
-          duration: 1.2,
-          stagger: {
-            amount: 1.2,
-            from: 'random',
-            grid: [masonryColumns, Math.ceil(IMAGES_PER_SECTION / masonryColumns)],
-            ease: 'power2.out'
-          },
-          ease: 'backOut(1.2)',
-          force3D: true,
-          clearProps: 'transform, filter'
-        },
-        0.3
-      );
-
-      masterTl.to('.art-bg', {
-        rotation: 360,
-        scale: 1.1,
-        duration: 60,
-        repeat: -1,
-        ease: 'none',
-        force3D: true
-      }, 0);
-    });
-
-    return () => ctx.revert();
-  }, [mounted, loading, masonryPlan, masonryColumns]);
-
-  // Scroll animations
-  useEffect(() => {
-    if (!mounted || loading) return;
-
-    const ctx = gsap.context(() => {
-      gsap.to('.art-bg', {
-        scrollTrigger: {
-          trigger: '.collage-scroll',
-          start: 'top top',
-          end: 'bottom bottom',
-          scrub: 1.5
-        },
-        y: 200,
-        rotation: 15,
-        scale: 1.3,
-        force3D: true
-      });
-
-      gsap.utils.toArray('.masonry-item').forEach((item, i) => {
-        ScrollTrigger.create({
-          trigger: item,
-          start: 'top 85%',
-          end: 'bottom 15%',
-          toggleActions: 'play reverse play reverse',
-          onEnter: () => {
-            gsap.fromTo(item,
-              { opacity: 0.3, y: 30, scale: 0.95, filter: 'blur(5px)' },
-              { 
-                opacity: 1, 
-                y: 0, 
-                scale: 1, 
-                filter: 'blur(0px)',
-                duration: 0.8, 
-                ease: 'power3.out',
-                force3D: true
-              }
-            );
-          },
-          onLeave: () => {
-            gsap.to(item, { 
-              opacity: 0.3, 
-              y: 20, 
-              scale: 0.98, 
-              filter: 'blur(3px)',
-              duration: 0.4, 
-              force3D: true 
-            });
-          },
-          onEnterBack: () => {
-            gsap.fromTo(item,
-              { opacity: 0.3, y: 25, scale: 0.96, filter: 'blur(4px)' },
-              { 
-                opacity: 1, 
-                y: 0, 
-                scale: 1, 
-                filter: 'blur(0px)',
-                duration: 0.7, 
-                ease: 'power2.out',
-                force3D: true 
-              }
-            );
-          }
-        });
-      });
-    });
-
-    ScrollTrigger.refresh();
-    
-    return () => ctx.revert();
-  }, [mounted, loading, currentIndex]);
-
-  // Hover animations
-  useEffect(() => {
-    itemsRef.current.forEach((item) => {
-      if (!item) return;
-      const hoverTl = gsap.timeline({ paused: true });
-      hoverTl.to(item, {
-        y: -6,
-        scale: 1.02,
-        boxShadow: '0 20px 30px -10px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.2)',
-        borderColor: 'rgba(255,255,255,0.3)',
-        duration: 0.3,
-        ease: 'power2.out',
-        force3D: true
-      })
-      .to(item.querySelector('img'), {
-        scale: 1.05,
-        duration: 0.4,
-        ease: 'power2.out',
-        force3D: true
-      }, 0)
-      .to(item.querySelector('.absolute.bottom-3'), {
-        y: -3,
-        opacity: 1,
-        duration: 0.3,
-        ease: 'power2.out',
-        force3D: true
-      }, 0);
-
-      item.addEventListener('mouseenter', () => hoverTl.play());
-      item.addEventListener('mouseleave', () => hoverTl.reverse());
-    });
-
-    return () => {
-      itemsRef.current.forEach((item) => {
-        if (item) {
-          item.removeEventListener('mouseenter', () => {});
-          item.removeEventListener('mouseleave', () => {});
-        }
-      });
-    };
-  }, [masonryPlan]);
-
   if (!mounted) return null;
 
   return (
@@ -735,91 +595,179 @@ function App() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20" />
             </div>
 
-            <div className="relative z-10 h-full flex flex-col">
-              <div ref={headerRef} className="shrink-0 pt-2 md:pt-3 pb-2">
-                <motion.div 
-                  ref={titleRef}
-                  className="text-white/95 text-2xl md:text-4xl font-semibold tracking-wide text-center drop-shadow pointer-events-none glow-text"
-                  animate={{ 
-                    textShadow: [
-                      '0 0 20px rgba(255,255,255,0.3)', 
-                      '0 0 40px rgba(255,255,255,0.6)', 
-                      '0 0 20px rgba(255,255,255,0.3)'
-                    ]
-                  }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                >
-                  Our Artwork Collection
-                </motion.div>
-                <AnimatePresence mode="wait" custom={direction}>
-                  <motion.h2
-                    key={currentArtwork.id}
-                    custom={direction}
-                    variants={{
-                      initial: dir => ({ opacity:0, y: shouldReduceMotion ? 0 : (dir==='next' ? 20 : -20), filter: 'blur(10px)' }),
-                      animate: { opacity:1, y:0, filter: 'blur(0px)', transition: { duration:0.5, ease:'power3.out' } },
-                      exit: dir => ({ opacity:0, y: shouldReduceMotion ? 0 : (dir==='next' ? -20 : 20), filter: 'blur(10px)', transition: { duration:0.4 } })
-                    }}
-                    initial="initial" 
-                    animate="animate" 
-                    exit="exit"
-                    className="mt-2 text-white/70 text-sm md:text-base font-medium tracking-[0.22em] uppercase text-center pointer-events-none"
-                  >
-                    {currentArtwork.title}
-                  </motion.h2>
-                </AnimatePresence>
-              </div>
+            <div className="relative z-10 h-full">
+              {/* ========== ULTRA-RESPONSIVE SWIPER ========== */}
+              <Swiper
+                modules={[Mousewheel]}
+                direction="horizontal"
+                slidesPerView={1}
+                spaceBetween={0}
+                mousewheel={{
+                  sensitivity: 1,
+                  thresholdDelta: 10,
+                  thresholdTime: 500,
+                  releaseOnEdges: true,
+                }}
+                speed={700}
+                touchRatio={2.5}        // ⬆️ High sensitivity – light touch moves slide a lot
+                threshold={3}            // ⬇️ Very low threshold – swipe starts with minimal movement
+                touchAngle={60}          // ⬆️ Wide angle – even diagonal movement counts as swipe
+                longSwipesRatio={0.1}    // ⬇️ Long swipe requires less distance
+                shortSwipes={true}
+                longSwipes={true}
+                resistanceRatio={0.6}
+                followFinger={true}
+                simulateTouch={true}
+                allowTouchMove={true}
+                easing="cubic-bezier(0.25, 0.1, 0.25, 1)"
+                onSwiper={(swiper) => { swiperRef.current = swiper; }}
+                onSlideChange={(swiper) => {
+                  const newIndex = swiper.activeIndex;
+                  setDirection(newIndex > currentIndex ? 'next' : 'prev');
+                  setCurrentIndex(newIndex);
+                }}
+                className="h-full w-full"
+              >
+                {artworks.map((artwork, idx) => {
+                  const seed = hashStringToUint32(artwork.category + idx);
+                  const images = getSafeImagesForCategory(artwork.category, imageCount, seed);
+                  const captions = buildTitlePlan({
+                    sources: images,
+                    category: artwork.category,
+                    seed: (idx+1)*99173 + refreshKey
+                  });
+                  const masonry = buildMasonryColumns({
+                    sources: images,
+                    columns: masonryColumns,
+                    seed: (idx+1)*4242 + refreshKey
+                  });
 
-              <div ref={galleryScrollRef} className="collage-scroll flex-1">
-                <div className="masonry-grid">
-                  {masonryPlan.map((col, ci) => (
-                    <div key={`col-${ci}-${refreshKey}`} className="masonry-col">
-                      {col.map((item, ii) => (
-                        <div
-                          ref={el => itemsRef.current[item.index] = el}
-                          key={`${currentArtwork.id}-${item.uniqueId}`}
-                          className={`masonry-item art-tile ${item.ratio}`}
-                          onClick={() => openModal(item)}
-                          role="button" 
-                          tabIndex={0}
-                          onKeyDown={e => { 
-                            if (e.key==='Enter'||e.key===' ') { 
-                              e.preventDefault(); 
-                              openModal(item); 
-                            } 
-                          }}
+                  return (
+                    <SwiperSlide key={artwork.id}>
+                      <div className="h-full flex flex-col">
+                        {/* Header */}
+                        <div 
+                          ref={idx === 0 ? headerRef : null} 
+                          className="shrink-0 pt-2 md:pt-3 pb-2"
                         >
-                          <TileImage 
-                            src={item.src} 
-                            alt={currentArtwork.title} 
-                            index={item.index} 
-                            fallbackPool={sectionImages}
-                            category={currentArtwork.category}
-                          />
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 via-black/0 to-transparent" />
-                          <div className="pointer-events-none absolute left-3 right-3 bottom-3">
-                            <div className="flex items-center gap-2">
-                              <svg
-                                width="12"
-                                height="12"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                className="text-white/70"
-                              >
-                                <path d="M12 22s7-5.3 7-12a7 7 0 10-14 0c0 6.7 7 12 7 12z" />
-                                <path d="M12 13.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4z" />
-                              </svg>
-                              <div className="text-[11px] md:text-xs text-white/80 font-light tracking-wide line-clamp-1">
-                                {captionPlan[item.index] ?? ''}
+                          <motion.div 
+                            ref={idx === 0 ? titleRef : null}
+                            className="text-white/95 text-2xl md:text-4xl font-semibold tracking-wide text-center drop-shadow pointer-events-none glow-text"
+                            animate={{ textShadow: [
+                              '0 0 20px rgba(255,255,255,0.3)',
+                              '0 0 40px rgba(255,255,255,0.6)',
+                              '0 0 20px rgba(255,255,255,0.3)'
+                            ]}}
+                            transition={{ duration: 4, repeat: Infinity }}
+                          >
+                            Our Artwork Collection
+                          </motion.div>
+                          <AnimatePresence mode="wait" custom={direction}>
+                            <motion.h2
+                              key={artwork.id}
+                              custom={direction}
+                              variants={{
+                                initial: dir => ({ opacity:0, y: shouldReduceMotion ? 0 : (dir==='next' ? 20 : -20), filter: 'blur(10px)' }),
+                                animate: { opacity:1, y:0, filter: 'blur(0px)', transition: { duration:0.5, ease:'power3.out' } },
+                                exit: dir => ({ opacity:0, y: shouldReduceMotion ? 0 : (dir==='next' ? -20 : 20), filter: 'blur(10px)', transition: { duration:0.4 } })
+                              }}
+                              initial="initial" 
+                              animate="animate" 
+                              exit="exit"
+                              className="mt-2 text-white/70 text-sm md:text-base font-medium tracking-[0.22em] uppercase text-center pointer-events-none"
+                            >
+                              {artwork.title}
+                            </motion.h2>
+                          </AnimatePresence>
+                        </div>
+
+                        {/* Scrollable masonry grid */}
+                        <div
+                          className="collage-scroll flex-1"
+                          style={{ overflowY: 'auto', overflowX: 'hidden' }}
+                        >
+                          <div className="masonry-grid">
+                            {masonry.map((col, ci) => (
+                              <div key={`col-${artwork.id}-${ci}-${refreshKey}`} className="masonry-col">
+                                {col.map((item, ii) => (
+                                  <div
+                                    ref={el => {
+                                      if (idx === currentIndex) {
+                                        itemsRef.current[item.index] = el;
+                                      }
+                                    }}
+                                    key={`${artwork.id}-${item.uniqueId}`}
+                                    className={`masonry-item art-tile ${item.ratio}`}
+                                    onClick={() => {
+                                      if (idx === currentIndex) {
+                                        openModal({ ...item, caption: captions[item.index] });
+                                      }
+                                    }}
+                                    role="button" 
+                                    tabIndex={0}
+                                    onKeyDown={e => { 
+                                      if (e.key==='Enter'||e.key===' ') { 
+                                        e.preventDefault(); 
+                                        if (idx === currentIndex) openModal({ ...item, caption: captions[item.index] }); 
+                                      } 
+                                    }}
+                                  >
+                                    <TileImage 
+                                      src={item.src} 
+                                      alt={artwork.title} 
+                                      index={item.index} 
+                                      fallbackPool={images}
+                                    />
+                                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 via-black/0 to-transparent" />
+                                    <div className="pointer-events-none absolute left-3 right-3 bottom-3">
+                                      <div className="flex items-center gap-2">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/70">
+                                          <path d="M12 22s7-5.3 7-12a7 7 0 10-14 0c0 6.7 7 12 7 12z" />
+                                          <path d="M12 13.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4z" />
+                                        </svg>
+                                        <div className="text-[11px] md:text-xs text-white/80 font-light tracking-wide line-clamp-1">
+                                          {captions[item.index] ?? ''}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            </div>
+                            ))}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ))}
+                      </div>
+                    </SwiperSlide>
+                  );
+                })}
+              </Swiper>
+
+              {/* Pagination dots, modal, etc. (unchanged) */}
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20 pointer-events-none">
+                {artworks.map((_, idx) => (
+                  <motion.div
+                    key={idx}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      idx === currentIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/40'
+                    }`}
+                    animate={idx === currentIndex ? { scale: [1, 1.2, 1] } : {}}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  />
+                ))}
+              </div>
+
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none md:block hidden">
+                <div className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                  <svg className="w-5 h-5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </div>
+              </div>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none md:block hidden">
+                <div className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                  <svg className="w-5 h-5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </div>
 
@@ -894,92 +842,6 @@ function App() {
                   </motion.div>
                 )}
               </AnimatePresence>
-
-              <div className="hidden md:flex absolute top-1/2 -translate-y-1/2 right-6 lg:right-10 z-20">
-                <div className="flex flex-col items-center gap-6">
-                  <motion.button 
-                    onClick={prevSlide} 
-                    disabled={isAnimating}
-                    className="nav-button w-12 h-12 rounded-full bg-white/5 backdrop-blur-sm hover:bg-white/15 flex items-center justify-center transition-all duration-300 group border border-white/10"
-                    whileHover={{ scale: 1.1, borderColor: 'rgba(255,255,255,0.3)' }}
-                    whileTap={{ scale: 0.9 }}
-                    animate={{ y: [0, -5, 0] }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  >
-                    <svg className="w-5 h-5 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
-                  </motion.button>
-                  
-                  <div className="flex flex-col gap-2">
-                    {artworks.map((_, idx) => (
-                      <motion.button
-                        key={idx}
-                        onClick={() => { if (!isAnimating && idx !== currentIndex) { setDirection(idx > currentIndex ? 'next' : 'prev'); setIsAnimating(true); setCurrentIndex(idx); setTimeout(() => setIsAnimating(false), 600); } }}
-                        className={`w-1 rounded-full transition-all duration-500 ${idx === currentIndex ? 'h-10 bg-white' : 'h-4 bg-white/20'}`}
-                        whileHover={{ scale: 1.5, backgroundColor: 'rgba(255,255,255,0.4)' }}
-                        animate={idx === currentIndex ? { scale: [1, 1.3, 1] } : {}}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      />
-                    ))}
-                  </div>
-
-                  <motion.button 
-                    onClick={nextSlide} 
-                    disabled={isAnimating}
-                    className="nav-button w-12 h-12 rounded-full bg-white/5 backdrop-blur-sm hover:bg-white/15 flex items-center justify-center transition-all duration-300 group border border-white/10"
-                    whileHover={{ scale: 1.1, borderColor: 'rgba(255,255,255,0.3)' }}
-                    whileTap={{ scale: 0.9 }}
-                    animate={{ y: [0, 5, 0] }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  >
-                    <svg className="w-5 h-5 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </motion.button>
-                </div>
-              </div>
-
-              <div className="md:hidden absolute bottom-6 left-0 right-0 z-20 flex items-center justify-center gap-4">
-                <motion.button 
-                  onClick={prevSlide} 
-                  disabled={isAnimating}
-                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </motion.button>
-                
-                <div className="flex gap-1.5">
-                  {artworks.map((_, idx) => (
-                    <motion.div 
-                      key={idx} 
-                      className={`h-1 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-6 bg-white' : 'w-2 bg-white/30'}`}
-                      animate={idx === currentIndex ? { scale: [1, 1.2, 1] } : {}}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    />
-                  ))}
-                </div>
-
-                <motion.button 
-                  onClick={nextSlide} 
-                  disabled={isAnimating}
-                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </motion.button>
-              </div>
             </div>
           </main>
         </div>
