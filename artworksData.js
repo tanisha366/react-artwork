@@ -97,8 +97,19 @@ function mulberry32(seed) {
 
 export function getSafeImagesForCategory(category, count, seed) {
   const pool = getArtworkSourcesForCategory(category);
+  // If the provider is our external source (zigguratss) prefer safe fallbacks
+  // because many of those remote files may be unavailable or heavy. In that
+  // case return the lightweight `FALLBACK_IMAGES` set to guarantee visible
+  // images immediately. Otherwise shuffle and return selected images.
   if (!pool.length) {
     return Array(count).fill(0).map((_, i) => createColorfulFallback(seed + i));
+  }
+  const allZiggurat = pool.every(u => typeof u === 'string' && u.includes('zigguratss.com'));
+  if (allZiggurat) {
+    // repeat the small unsplash fallbacks so every tile has a visible image
+    const out = [];
+    for (let i = 0; i < count; i++) out.push(FALLBACK_IMAGES[i % FALLBACK_IMAGES.length]);
+    return out;
   }
 
   const rnd = mulberry32(seed);
