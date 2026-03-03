@@ -27,6 +27,43 @@ body {
   overflow: hidden;
 }
 
+.intro-fire-flakes {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.intro-fire-flake {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 243, 214, 0.95) 0%, rgba(255, 170, 84, 0.78) 55%, rgba(255, 100, 40, 0) 100%);
+  filter: drop-shadow(0 0 8px rgba(255, 146, 43, 0.7));
+  animation-name: fireFlakeFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes fireFlakeFall {
+  0% {
+    transform: translate3d(0, 115vh, 0) scale(0.7);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  75% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translate3d(45px, -12vh, 0) scale(1.2);
+    opacity: 0;
+  }
+}
+
 /* Collage grid (slider right panel) */
 .collage-scroll {
   height: 100%;
@@ -353,6 +390,53 @@ body {
   animation: glowPulse 4s ease-in-out infinite;
 }
 
+.lightning-rays {
+  position: relative;
+  display: block;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  isolation: isolate;
+  text-shadow:
+    0 0 24px rgba(255,255,255,0.75),
+    0 0 44px rgba(255,255,255,0.55),
+    0 0 70px rgba(255,240,200,0.28);
+  animation: lightningPulse 2.6s ease-in-out infinite;
+}
+
+.lightning-rays::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 145%;
+  height: 145%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.9;
+  filter: blur(2px);
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255,255,255,0.22) 15deg,
+    rgba(255,240,200,0.3) 30deg,
+    rgba(255,255,255,0.22) 45deg,
+    transparent 60deg,
+    transparent 120deg,
+    rgba(255,255,255,0.22) 135deg,
+    rgba(255,240,200,0.3) 150deg,
+    rgba(255,255,255,0.22) 165deg,
+    transparent 180deg,
+    transparent 240deg,
+    rgba(255,255,255,0.22) 255deg,
+    rgba(255,240,200,0.3) 270deg,
+    rgba(255,255,255,0.22) 285deg,
+    transparent 300deg
+  );
+  animation: rotateRays 12s linear infinite;
+}
+
 @keyframes glowPulse {
   0%, 100% {
     text-shadow: 0 0 20px rgba(255,255,255,0.3), 0 0 40px rgba(255,255,255,0.2);
@@ -360,6 +444,26 @@ body {
   50% {
     text-shadow: 0 0 30px rgba(255,255,255,0.6), 0 0 60px rgba(255,255,255,0.4);
   }
+}
+
+@keyframes lightningPulse {
+  0%, 100% {
+    text-shadow:
+      0 0 24px rgba(255,255,255,0.75),
+      0 0 44px rgba(255,255,255,0.55),
+      0 0 70px rgba(255,240,200,0.28);
+  }
+  50% {
+    text-shadow:
+      0 0 32px rgba(255,255,255,0.95),
+      0 0 58px rgba(255,255,255,0.75),
+      0 0 88px rgba(255,240,200,0.4);
+  }
+}
+
+@keyframes rotateRays {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 /* ========== RESPONSIVE BREAKPOINTS - 5 COLUMNS ========== */
@@ -793,4 +897,111 @@ body {
 .collage-scroll::after {
   height: 20px !important;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent 80%) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CUSTOM SCROLL-REVEAL ANIMATION ENGINE  (AOS-style)
+   Powered by IntersectionObserver + CSS transitions.
+   JS adds .is-revealed — no third-party lib needed.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Base: all revealable elements start invisible */
+[data-reveal] {
+  opacity: 0;
+  will-change: opacity, transform, filter;
+  transition:
+    opacity  0.78s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.78s cubic-bezier(0.22, 1, 0.36, 1),
+    filter   0.65s ease;
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+/* Revealed: JS flips this class on, transitions do the rest */
+[data-reveal].is-revealed {
+  opacity: 1 !important;
+  transform: none !important;
+  filter:    none !important;
+}
+
+/* ── Variant starting transforms ── */
+[data-reveal="fade-up"]    { transform: translateY(52px); }
+[data-reveal="fade-down"]  { transform: translateY(-52px); }
+[data-reveal="fade-left"]  { transform: translateX(65px);  filter: blur(5px); }
+[data-reveal="fade-right"] { transform: translateX(-65px); filter: blur(5px); }
+[data-reveal="zoom-in"]    { transform: scale(0.78); filter: blur(9px); }
+[data-reveal="zoom-out"]   { transform: scale(1.2);  filter: blur(7px); }
+[data-reveal="flip-up"]    { transform: perspective(900px) rotateX(-40deg) translateY(32px); filter: blur(4px); }
+[data-reveal="flip-left"]  { transform: perspective(900px) rotateY(-38deg) translateX(28px); filter: blur(4px); }
+[data-reveal="shimmer"]    { transform: translateY(34px); filter: brightness(0.35) blur(6px); }
+[data-reveal="slide-up"]   { transform: translateY(100%); }
+
+/* ── Letter-by-letter chars reveal ── */
+[data-reveal="chars"] .char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(115%) rotate(4deg);
+  transition:
+    opacity   0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--char-delay, 0ms);
+}
+[data-reveal="chars"].is-revealed .char {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Stagger helpers (apply --reveal-delay on children via JS or inline style) ── */
+[data-reveal-stagger] > * {
+  opacity: 0;
+  transform: translateY(36px);
+  transition:
+    opacity  0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+[data-reveal-stagger].is-revealed > *:nth-child(1)  { opacity:1; transform:none; transition-delay: 0ms; }
+[data-reveal-stagger].is-revealed > *:nth-child(2)  { opacity:1; transform:none; transition-delay: 80ms; }
+[data-reveal-stagger].is-revealed > *:nth-child(3)  { opacity:1; transform:none; transition-delay: 160ms; }
+[data-reveal-stagger].is-revealed > *:nth-child(4)  { opacity:1; transform:none; transition-delay: 240ms; }
+[data-reveal-stagger].is-revealed > *:nth-child(5)  { opacity:1; transform:none; transition-delay: 320ms; }
+[data-reveal-stagger].is-revealed > *:nth-child(6)  { opacity:1; transform:none; transition-delay: 400ms; }
+
+/* ═══════════════════════════
+   PROFESSIONAL HEADING SIZES
+   ═══════════════════════════ */
+
+/* Gallery section main title — "Our Artwork Collection" */
+.gallery-main-title {
+  font-size: clamp(2rem, 4.5vw, 3.6rem);
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  line-height: 1.05;
+  text-shadow:
+    0 0 40px rgba(255,255,255,0.25),
+    0 2px 0 rgba(0,0,0,0.5);
+}
+
+/* Gallery section subtitle — category name */
+.gallery-sub-title {
+  font-size: clamp(0.95rem, 2vw, 1.45rem);
+  font-weight: 500;
+  letter-spacing: 0.24em;
+}
+
+/* Loading screen title */
+.loading-title {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+}
+
+/* StartingPage fixed heading */
+.starting-page-heading {
+  font-size: clamp(2.2rem, 5.5vw, 5rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-shadow:
+    0 0 50px rgba(150,180,255,0.5),
+    0 2px 0 rgba(0,0,0,0.6);
 }

@@ -14,6 +14,7 @@ import {
   createColorfulFallback,
   FALLBACK_IMAGES
 } from './artworksData.js';
+import StartingPage from './StartingPage.jsx';
 import './index.css';
 
 gsap.registerPlugin(ScrollTrigger, TextPlugin);
@@ -174,11 +175,37 @@ function TileImage({ src, alt, index, fallbackPool = [] }) {
   );
 }
 
-// ========== LOADING SCREEN (unchanged) ==========
-function LoadingScreen({ onComplete }) { /* ... */ }
+// ========== LOADING SCREEN ==========
+function LoadingScreen({ onComplete }) {
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      onComplete?.();
+    }, 900);
 
-// ========== INTRO / STARTUP CARDS – HORIZONTAL SWIPER ==========
-function IntroScreen({ artworksList, onChoose }) {
+    return () => window.clearTimeout(timer);
+  }, [onComplete]);
+
+  return (
+    <div className="fixed inset-0 z-[999] bg-black flex items-center justify-center">
+      <div className="text-center px-6">
+        <div className="text-white text-2xl md:text-4xl font-semibold tracking-wider">
+          Our Artwork Collection
+        </div>
+        <div className="mt-5 h-1 w-56 bg-white/20 rounded-full overflow-hidden mx-auto">
+          <motion.div
+            className="h-full bg-white"
+            initial={{ x: '-100%' }}
+            animate={{ x: '100%' }}
+            transition={{ duration: 0.9, ease: 'easeInOut' }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ========== LEGACY INTRO SCREEN (preserved, not used) ==========
+function LegacyIntroScreen({ artworksList, onChoose }) {
   const containerRef = useRef(null);
   const imgRefs = useRef([]);
   const swiperInnerRef = useRef(null);
@@ -422,7 +449,6 @@ function App() {
   const titleRef = useRef(null);
   const mainContainerRef = useRef(null);
   const itemsRef = useRef([]);
-  const swiperContainerRef = useRef(null);
 
   const isSmUp = useMediaQuery('(min-width: 640px)');
   const isMdUp = useMediaQuery('(min-width: 768px)');
@@ -433,6 +459,12 @@ function App() {
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { setRefreshKey(Date.now() + Math.random() * 1e6); }, []);
+
+  useEffect(() => {
+    if (!loading) return;
+    const safety = window.setTimeout(() => setLoading(false), 2200);
+    return () => window.clearTimeout(safety);
+  }, [loading]);
 
   // ========== WHEEL EVENT HANDLING (unchanged) ==========
   useEffect(() => {
@@ -463,75 +495,6 @@ function App() {
     container?.addEventListener('wheel', onWheelSmooth, { passive: true });
     return () => container?.removeEventListener('wheel', onWheelSmooth);
   }, [mounted, loading]);
-
-  // ========== 3D SECTION TRANSITION ANIMATION ==========
-  useEffect(() => {
-    if (!mounted || !swiperContainerRef.current || shouldReduceMotion) return;
-
-    const swiper = swiperRef.current;
-    if (!swiper) return;
-
-    // Apply perspective to container
-    swiperContainerRef.current.style.perspective = '1400px';
-
-    // Get slide elements
-    const activeSlide = swiper.slides[swiper.activeIndex];
-    const prevSlide = swiper.slides[swiper.activeIndex - 1];
-    const nextSlide = swiper.slides[swiper.activeIndex + 1];
-
-    // Reset all slides first
-    swiper.slides.forEach(slide => {
-      slide.style.transformStyle = 'preserve-3d';
-      gsap.to(slide, { rotateY: 0, scale: 1, duration: 0.01, overwrite: 'auto' });
-    });
-
-    // Animate active slide (stays in place with slight scale during transitions)
-    if (activeSlide) {
-      activeSlide.style.transformStyle = 'preserve-3d';
-      gsap.to(activeSlide, { rotateY: 0, scale: 1, duration: 0.01 });
-    }
-  }, [currentIndex, mounted, shouldReduceMotion]);
-
-  // Animate slide transitions on swipe
-  const animateSlideTransition = useCallback((swiper) => {
-    if (!swiperContainerRef.current || shouldReduceMotion) return;
-
-    const activeSlide = swiper.slides[swiper.activeIndex];
-    const isMovingNext = swiper.activeIndex > currentIndex;
-
-    // Animate current/outgoing slide
-    const prevActiveSlide = swiper.slides[currentIndex];
-    if (prevActiveSlide) {
-      prevActiveSlide.style.transformStyle = 'preserve-3d';
-      gsap.to(prevActiveSlide, {
-        rotateY: isMovingNext ? -85 : 85,
-        scale: 0.95,
-        opacity: 0.3,
-        duration: 0.85,
-        ease: 'power4.inOut',
-        force3D: true,
-        overwrite: 'auto'
-      });
-    }
-
-    // Animate incoming slide
-    if (activeSlide) {
-      activeSlide.style.transformStyle = 'preserve-3d';
-      const startRotation = isMovingNext ? 85 : -85;
-      gsap.fromTo(activeSlide, 
-        { rotateY: startRotation, scale: 0.95, opacity: 0.3 },
-        { rotateY: 0, scale: 1, opacity: 1, duration: 0.85, ease: 'power4.inOut', force3D: true, overwrite: 'auto' }
-      );
-    }
-  }, [currentIndex, shouldReduceMotion]);
-
-  // Listen to Swiper slide changes and animate transitions
-  useEffect(() => {
-    if (!swiperRef.current) return;
-    const swiper = swiperRef.current;
-    swiper.on('slideChangeTransitionStart', animateSlideTransition);
-    return () => swiper.off('slideChangeTransitionStart', animateSlideTransition);
-  }, [animateSlideTransition]);
 
   // ========== DATA FOR CURRENT SLIDE ==========
   const currentArtwork = artworks[currentIndex];
@@ -626,7 +589,7 @@ function App() {
     };
   }, [masonryPlan, currentIndex]);
 
-  // ========== DYNAMIC IMAGE JUMP & BOUNCE ANIMATIONS ON SECTION CHANGE ==========
+  // ========== ADDITION: GSAP SLIDE CHANGE ANIMATION ==========
   useEffect(() => {
     if (!mounted || loading) return;
 
@@ -634,63 +597,34 @@ function App() {
     const activeItems = document.querySelectorAll('.swiper-slide-active .masonry-item');
     if (!activeItems.length) return;
 
-    // Helper for random values
+    // Create a random but subtle effect per slide
     const rnd = (min, max) => Math.random() * (max - min) + min;
-    
-    // Animation type pool for variety
-    const animTypes = ['jumpBounce', 'slideRotate', 'flip3D', 'elasticPop', 'spiralIn'];
 
-    // Animate each item with varied effects
-    activeItems.forEach((item, idx) => {
-      const animType = animTypes[idx % animTypes.length];
-      const delay = (idx % masonryColumns) * 0.06 + Math.floor(idx / masonryColumns) * 0.08;
-      
-      switch(animType) {
-        case 'jumpBounce':
-          // Strong bounce from below
-          gsap.fromTo(item,
-            { y: rnd(100, 140), opacity: 0, scale: 0.7, rotation: rnd(-12, 12), filter: 'blur(8px)' },
-            { y: 0, opacity: 1, scale: 1, rotation: 0, filter: 'blur(0px)', duration: 0.9, ease: 'back.out(1.8)', force3D: true, delay, clearProps: 'transform, filter' }
-          );
-          break;
-          
-        case 'slideRotate':
-          // Slide from side with rotation
-          const fromX = idx % 2 === 0 ? -120 : 120;
-          gsap.fromTo(item,
-            { x: fromX, y: rnd(50, 80), opacity: 0, rotation: rnd(-25, 25), scale: 0.8, filter: 'blur(10px)' },
-            { x: 0, y: 0, opacity: 1, rotation: 0, scale: 1, filter: 'blur(0px)', duration: 1.0, ease: 'power3.out', force3D: true, delay, clearProps: 'transform, filter' }
-          );
-          break;
-          
-        case 'flip3D':
-          // 3D flip entrance
-          gsap.fromTo(item,
-            { rotateY: rnd(-90, 90), rotateX: rnd(-30, 30), opacity: 0, scale: 0.6, filter: 'blur(12px)' },
-            { rotateY: 0, rotateX: 0, opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.1, ease: 'power4.out', force3D: true, delay, clearProps: 'transform, filter' }
-          );
-          break;
-          
-        case 'elasticPop':
-          // Elastic scale pop with jump
-          gsap.fromTo(item,
-            { scale: 0.3, y: rnd(80, 120), opacity: 0, rotation: rnd(-20, 20), filter: 'blur(8px)' },
-            { scale: 1, y: 0, opacity: 1, rotation: 0, filter: 'blur(0px)', duration: 1.2, ease: 'elastic.out(1, 0.6)', force3D: true, delay, clearProps: 'transform, filter' }
-          );
-          break;
-          
-        case 'spiralIn':
-          // Spiral rotation with scale
-          gsap.fromTo(item,
-            { rotation: rnd(180, 360), scale: 0.5, y: rnd(90, 130), opacity: 0, filter: 'blur(10px)' },
-            { rotation: 0, scale: 1, y: 0, opacity: 1, filter: 'blur(0px)', duration: 1.15, ease: 'back.out(1.5)', force3D: true, delay, clearProps: 'transform, filter' }
-          );
-          break;
-          
-        default:
-          break;
+    gsap.fromTo(activeItems,
+      {
+        scale: rnd(0.7, 0.9),
+        opacity: 0.3,
+        y: rnd(20, 40),
+        rotation: rnd(-8, 8),
+        filter: 'blur(4px)',
+      },
+      {
+        scale: 1,
+        opacity: 1,
+        y: 0,
+        rotation: 0,
+        filter: 'blur(0px)',
+        duration: 1.2,
+        stagger: {
+          amount: 1.0,
+          from: 'random',
+          grid: [masonryColumns, Math.ceil(activeItems.length / masonryColumns)],
+          ease: 'power3.out',
+        },
+        ease: 'backOut(1.2)',
+        clearProps: 'transform, filter', // clean up after animation so hover still works
       }
-    });
+    );
   }, [currentIndex, mounted, loading, masonryColumns]); // runs on every slide change
 
   // ========== MODAL FUNCTIONS ==========
@@ -736,9 +670,8 @@ function App() {
       {loading && <LoadingScreen onComplete={() => setLoading(false)} />}
 
       {!loading && showIntro && (
-        <IntroScreen
-          artworksList={artworks}
-          onChoose={(idx) => {
+        <StartingPage
+          onSelectCategory={(idx) => {
             setCurrentIndex(idx);
             setShowIntro(false);
             setTimeout(() => { swiperRef.current?.slideTo(idx, 700); }, 80);
@@ -746,6 +679,7 @@ function App() {
         />
       )}
 
+      {!showIntro && (
       <div ref={mainContainerRef} className="h-screen w-screen overflow-hidden bg-stone-950">
         <div className="h-screen w-screen p-3 md:p-6">
           <main className="relative h-full w-full rounded-2xl overflow-hidden">
@@ -767,9 +701,8 @@ function App() {
                 </div>
               )}
 
-              {/* Main Swiper – with 3D transition animations */}
+              {/* Main Swiper – unchanged */}
               <Swiper
-                ref={swiperContainerRef}
                 modules={[Mousewheel]}
                 direction="horizontal"
                 slidesPerView={1}
@@ -786,7 +719,6 @@ function App() {
                 followFinger={true}
                 simulateTouch={true}
                 allowTouchMove={true}
-                style={{ perspective: '1400px' }}
                 onSwiper={(swiper) => { swiperRef.current = swiper; }}
                 onSlideChange={(swiper) => {
                   setCurrentIndex(swiper.activeIndex);
@@ -803,7 +735,7 @@ function App() {
                     <SwiperSlide key={artwork.id}>
                       <div className="h-full flex flex-col">
                         <div ref={idx === 0 ? headerRef : null} className="shrink-0 pt-2 md:pt-3 pb-2">
-                          <motion.div ref={idx === 0 ? titleRef : null} className="text-white/95 text-2xl md:text-4xl font-semibold tracking-wide text-center drop-shadow pointer-events-none glow-text" animate={{ textShadow: ['0 0 20px rgba(255,255,255,0.3)', '0 0 40px rgba(255,255,255,0.6)', '0 0 20px rgba(255,255,255,0.3)'] }} transition={{ duration: 4, repeat: Infinity }}>
+                          <motion.div ref={idx === 0 ? titleRef : null} className="text-white/95 text-2xl md:text-4xl font-semibold tracking-wide text-center drop-shadow pointer-events-none glow-text lightning-rays" animate={{ textShadow: ['0 0 20px rgba(255,255,255,0.3)', '0 0 40px rgba(255,255,255,0.6)', '0 0 20px rgba(255,255,255,0.3)'] }} transition={{ duration: 4, repeat: Infinity }}>
                             Our Artwork Collection
                           </motion.div>
                           <AnimatePresence mode="wait" custom={direction}>
@@ -932,6 +864,7 @@ function App() {
           </main>
         </div>
       </div>
+      )}
     </>
   );
 }

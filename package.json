@@ -13,6 +13,7 @@
     "@studio-freight/lenis": "^1.0.42",
     "framer-motion": "^12.34.3",
     "gsap": "^3.14.2",
+    "ogl": "^1.0.11",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "swiper": "^12.1.2"
