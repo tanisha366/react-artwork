@@ -1060,50 +1060,23 @@ function App() {
                                 }}
                               >
                               <TileImage src={item.src} alt={artwork.title} index={item.index} fallbackPool={images} />
-                                {/* Enhanced gradient overlay for better text readability - always visible */}
+                                {/* Minimal gradient only at bottom edge for text readability */}
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
+                                {/* Clean text overlay without background box */}
                                 <motion.div 
-                                  className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/90 via-black/50 to-transparent"
-                                  initial={{ opacity: 1, scaleY: 1 }}
+                                  className="pointer-events-none absolute left-2 right-2 bottom-2"
+                                  initial={{ opacity: 1 }}
                                   whileHover={{ 
-                                    opacity: 1, 
-                                    scaleY: 1.02,
-                                    transition: { duration: 0.3, ease: "easeOut" }
-                                  }}
-                                />
-                                {/* Enhanced caption with always visible titles */}
-                                <motion.div 
-                                  className="pointer-events-none absolute left-3 right-3 bottom-3"
-                                  initial={{ y: 0, opacity: 1, scale: 1 }}
-                                  whileHover={{ 
-                                    y: -3, 
-                                    opacity: 1, 
-                                    scale: 1.02,
-                                    transition: { 
-                                      duration: 0.3, 
-                                      ease: "easeOut",
-                                      type: "spring",
-                                      stiffness: 200,
-                                      damping: 25
-                                    }
+                                    opacity: 1,
+                                    y: -2,
+                                    transition: { duration: 0.2, ease: "easeOut" }
                                   }}
                                 >
-                                  <div className="flex items-center gap-3 bg-black/50 backdrop-blur-md rounded-lg px-4 py-2.5 border border-white/15 shadow-lg">
-                                    <motion.svg 
-                                      width="16" 
-                                      height="16" 
-                                      viewBox="0 0 24 24" 
-                                      fill="none" 
-                                      stroke="currentColor" 
-                                      strokeWidth="2" 
-                                      className="text-white/95 flex-shrink-0"
-                                      whileHover={{ scale: 1.1, rotate: 8 }}
-                                    >
-                                      <path d="M12 22s7-5.3 7-12a7 7 0 10-14 0c0 6.7 7 12 7 12z" />
-                                      <path d="M12 13.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4z" />
-                                    </motion.svg>
-                                    <div className="text-sm md:text-base text-white font-semibold tracking-wide line-clamp-2 leading-relaxed drop-shadow-sm">
-                                      {captions[item.index] ?? 'Untitled Artwork'}
-                                    </div>
+                                  <div className="text-xs sm:text-sm md:text-base text-white font-medium tracking-wide line-clamp-2 leading-tight" 
+                                       style={{ 
+                                         textShadow: '1px 1px 3px rgba(0,0,0,0.8), 0px 0px 8px rgba(0,0,0,0.6)' 
+                                       }}>
+                                    {captions[item.index] ?? 'Untitled Artwork'}
                                   </div>
                                 </motion.div>
                               </motion.div>
