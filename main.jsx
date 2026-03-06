@@ -1,9 +1,10 @@
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Mousewheel, EffectCards } from "swiper/modules";
+import { Mousewheel, EffectCards, EffectCreative } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/effect-cards";
+import "swiper/css/effect-creative";
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { createRoot } from 'react-dom/client';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -147,18 +148,38 @@ function TileImage({ src, alt, index, fallbackPool = [] }) {
   // observe when tile enters the nearest scroll container to trigger framer animations
   useEffect(() => {
     const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') return;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      // Fallback: if IntersectionObserver is not available, show immediately
+      setInView(true);
+      return;
+    }
     const root = el.closest('.collage-scroll') || null;
     const io = new IntersectionObserver((entries) => {
       entries.forEach(en => setInView(en.isIntersecting));
-    }, { root, threshold: 0.15 });
+    }, { root, threshold: 0.1 }); // Reduced threshold for earlier visibility
     io.observe(el);
-    return () => io.disconnect();
+    
+    // Fallback timeout: show after 2 seconds regardless of intersection
+    const fallbackTimer = setTimeout(() => setInView(true), 2000);
+    
+    return () => {
+      io.disconnect();
+      clearTimeout(fallbackTimer);
+    };
   }, [ref]);
 
   const variants = {
-    hidden: { opacity: 0, y: 28, scale: 0.985 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
+    hidden: { opacity: 0, y: 30, scale: 0.9, rotateY: -10 },
+    visible: {
+      opacity: 1, y: 0, scale: 1, rotateY: 0,
+      transition: { 
+        duration: 0.6, 
+        ease: [0.25, 0.46, 0.45, 0.94],
+        delay: index * 0.03,
+        type: "spring",
+        stiffness: 120
+      },
+    },
   };
 
   return (
@@ -171,40 +192,227 @@ function TileImage({ src, alt, index, fallbackPool = [] }) {
       initial="hidden"
       animate={reduce ? 'visible' : (inView ? 'visible' : 'hidden')}
       variants={variants}
+      whileHover={{ 
+        scale: 1.03,
+        filter: "brightness(1.06) contrast(1.04) saturate(1.03)",
+        transition: { 
+          duration: 0.3, 
+          ease: "easeOut"
+        }
+      }}
     />
   );
 }
 
 // ========== LOADING SCREEN ==========
 function LoadingScreen({ onComplete }) {
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      onComplete?.();
-    }, 900);
+  const reduce = useReducedMotion();
 
+  useEffect(() => {
+    // Extended to 1900ms so the SVG draw-in completes before navigating
+    const timer = window.setTimeout(() => { onComplete?.(); }, 1900);
     return () => window.clearTimeout(timer);
   }, [onComplete]);
 
+  // SVG path-drawing variants (framer-motion pathLength)
+  const pathVars = (delay = 0, dur = 1.2) => ({
+    hidden: { pathLength: 0, opacity: 0 },
+    visible: { pathLength: 1, opacity: 1, transition: { duration: dur, delay, ease: 'easeInOut' } },
+  });
+
+  const title = 'Our Artwork Collection';
+
   return (
-    <div className="fixed inset-0 z-[999] bg-black flex items-center justify-center">
-      <div className="text-center px-6">
-        <div className="text-white text-2xl md:text-4xl font-semibold tracking-wider">
-          Our Artwork Collection
-        </div>
-        <div className="mt-5 h-1 w-56 bg-white/20 rounded-full overflow-hidden mx-auto">
-          <motion.div
-            className="h-full bg-white"
-            initial={{ x: '-100%' }}
-            animate={{ x: '100%' }}
-            transition={{ duration: 0.9, ease: 'easeInOut' }}
-          />
-        </div>
+    <div className="fixed inset-0 z-[999] bg-black flex flex-col items-center justify-center gap-8">
+      {/* ── Artistic SVG frame drawing ── */}
+      <motion.svg
+        width="200" height="200" viewBox="0 0 200 200"
+        fill="none" initial="hidden" animate="visible">
+        {/* Outer decorative frame */}
+        <motion.rect x="10" y="10" width="180" height="180" rx="6"
+          stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" variants={pathVars(0, 1.3)} />
+        {/* Inner mat border */}
+        <motion.rect x="26" y="26" width="148" height="148" rx="2"
+          stroke="rgba(255,255,255,0.25)" strokeWidth="1" variants={pathVars(0.25, 1.1)} />
+        {/* Crosshair guides */}
+        <motion.line x1="100" y1="26" x2="100" y2="174"
+          stroke="rgba(255,255,255,0.14)" strokeWidth="0.8" variants={pathVars(0.5, 0.9)} />
+        <motion.line x1="26" y1="100" x2="174" y2="100"
+          stroke="rgba(255,255,255,0.14)" strokeWidth="0.8" variants={pathVars(0.65, 0.9)} />
+        {/* Diagonal accent lines */}
+        <motion.line x1="46" y1="46" x2="154" y2="154"
+          stroke="rgba(255,255,255,0.09)" strokeWidth="0.8" variants={pathVars(0.8, 0.85)} />
+        <motion.line x1="154" y1="46" x2="46" y2="154"
+          stroke="rgba(255,255,255,0.09)" strokeWidth="0.8" variants={pathVars(0.9, 0.85)} />
+        {/* Center circle */}
+        <motion.circle cx="100" cy="100" r="22"
+          stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" variants={pathVars(1.0, 0.75)} />
+        {/* Corner diamond accents */}
+        <motion.rect x="88" y="10" width="24" height="10" rx="2"
+          stroke="rgba(255,255,255,0.35)" strokeWidth="1" variants={pathVars(1.2, 0.5)} />
+        <motion.rect x="88" y="180" width="24" height="10" rx="2"
+          stroke="rgba(255,255,255,0.35)" strokeWidth="1" variants={pathVars(1.2, 0.5)} />
+        {/* Center dot — pops in at end */}
+        <motion.circle cx="100" cy="100" r="5" fill="white"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 1.55, duration: 0.5, ease: [0.22, 1, 0.36, 1] }} />
+        {/* Tiny sparkles at corners */}
+        <motion.circle cx="26" cy="26" r="2.5" fill="rgba(255,255,255,0.6)"
+          initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 1.35, duration: 0.3, ease: 'backOut' }} />
+        <motion.circle cx="174" cy="26" r="2.5" fill="rgba(255,255,255,0.6)"
+          initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 1.4, duration: 0.3, ease: 'backOut' }} />
+        <motion.circle cx="26" cy="174" r="2.5" fill="rgba(255,255,255,0.6)"
+          initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 1.45, duration: 0.3, ease: 'backOut' }} />
+        <motion.circle cx="174" cy="174" r="2.5" fill="rgba(255,255,255,0.6)"
+          initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 1.5, duration: 0.3, ease: 'backOut' }} />
+      </motion.svg>
+
+      {/* ── Title: letter-by-letter stagger ── */}
+      <div className="flex flex-wrap justify-center overflow-hidden">
+        {title.split('').map((ch, i) => (
+          <motion.span
+            key={i}
+            className="text-white text-xl md:text-3xl font-semibold tracking-widest inline-block"
+            style={{ minWidth: ch === ' ' ? '0.4em' : undefined }}
+            initial={reduce ? { opacity: 1 } : { opacity: 0, y: 18, filter: 'blur(5px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ delay: 0.3 + i * 0.038, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {ch === ' ' ? '\u00A0' : ch}
+          </motion.span>
+        ))}
+      </div>
+
+      {/* ── Animated progress bar with riding dot ── */}
+      <div className="relative h-px w-52 bg-white/15 rounded-full overflow-visible">
+        <motion.div
+          className="absolute inset-0 bg-white rounded-full origin-left"
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 1.7, ease: 'easeInOut', delay: 0.15 }}
+        />
+        <motion.div
+          className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white"
+          style={{ boxShadow: '0 0 12px 5px rgba(255,255,255,0.55)', marginLeft: '-5px' }}
+          initial={{ left: '0%' }}
+          animate={{ left: '100%' }}
+          transition={{ duration: 1.7, ease: 'easeInOut', delay: 0.15 }}
+        />
       </div>
     </div>
   );
 }
 
 // ========== LEGACY INTRO SCREEN (preserved, not used) ==========
+
+// Accent colours matched to artwork slide order (loops)
+const SLIDE_ACCENTS = ['#3b82f6','#a855f7','#10b981','#ef4444','#f59e0b','#6366f1'];
+
+/**
+ * Canvas-based floating dust / light-spot particle system.
+ * Particles drift with gentle mouse repulsion and change colour on slide change.
+ * Returns null when prefers-reduced-motion is true for full accessibility.
+ */
+function ParticleCanvas({ accentColor = '#ffffff' }) {
+  const canvasRef = useRef(null);
+  const mouseRef = useRef({ x: -999, y: -999 });
+  const reduce = useReducedMotion();
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    if (reduce) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Parse hex accent → rgb
+    const hex = accentColor.replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+
+    let W = canvas.offsetWidth, H = canvas.offsetHeight;
+    canvas.width = W; canvas.height = H;
+
+    const COUNT = 60;
+    const particles = Array.from({ length: COUNT }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: (Math.random() - 0.5) * 0.2,
+      radius: 1 + Math.random() * 2.8,
+      alpha: 0.07 + Math.random() * 0.2,
+      pulse: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.006 + Math.random() * 0.014,
+    }));
+
+    const onMouse = (e) => {
+      const rc = canvas.getBoundingClientRect();
+      mouseRef.current = { x: e.clientX - rc.left, y: e.clientY - rc.top };
+    };
+    const onResize = () => {
+      W = canvas.offsetWidth; H = canvas.offsetHeight;
+      canvas.width = W; canvas.height = H;
+    };
+    window.addEventListener('mousemove', onMouse, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
+
+    const draw = () => {
+      ctx.clearRect(0, 0, W, H);
+      const { x: mx, y: my } = mouseRef.current;
+      for (const p of particles) {
+        // Gentle mouse repulsion within 110px
+        const dx = p.x - mx, dy = p.y - my;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 110 && dist > 0) {
+          p.vx += (dx / dist) * 0.045;
+          p.vy += (dy / dist) * 0.045;
+        }
+        // Speed cap
+        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (spd > 0.65) { p.vx *= 0.65 / spd; p.vy *= 0.65 / spd; }
+        // Friction
+        p.vx *= 0.995; p.vy *= 0.995;
+        p.x += p.vx; p.y += p.vy;
+        p.pulse += p.pulseSpeed;
+        // Wrap
+        if (p.x < -6) p.x = W + 6; if (p.x > W + 6) p.x = -6;
+        if (p.y < -6) p.y = H + 6; if (p.y > H + 6) p.y = -6;
+        // Draw radial glow dot
+        const a = p.alpha * (0.65 + 0.35 * Math.sin(p.pulse));
+        const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius * 3);
+        grd.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+        grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius * 3, 0, Math.PI * 2);
+        ctx.fillStyle = grd;
+        ctx.fill();
+      }
+      rafRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener('mousemove', onMouse);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [accentColor, reduce]);
+
+  if (reduce) return null;
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1, opacity: 0.75 }}
+    />
+  );
+}
 function LegacyIntroScreen({ artworksList, onChoose }) {
   const containerRef = useRef(null);
   const imgRefs = useRef([]);
@@ -519,75 +727,68 @@ function App() {
     seed: (currentIndex+1)*4242 + refreshKey
   }), [sectionImages, masonryColumns, currentIndex, refreshKey]);
 
-  // ========== GSAP INITIAL LOAD ANIMATION (unchanged) ==========
+  // ========== ENHANCED ENTRANCE ANIMATIONS ==========
   useEffect(() => {
     if (!mounted || loading || !masonryPlan) return;
     const ctx = gsap.context(() => {
       const masterTl = gsap.timeline();
-      masterTl.fromTo(headerRef.current, { y: -100, opacity: 0, scale: 0.8, filter: 'blur(10px)' }, { y: 0, opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.2, ease: 'power3.out', force3D: true }, 0);
-      masterTl.fromTo(titleRef.current, { scale: 0.5, opacity: 0, rotationX: 30, filter: 'blur(15px)' }, { scale: 1, opacity: 1, rotationX: 0, filter: 'blur(0px)', duration: 1.4, ease: 'backOut(1.7)', force3D: true }, 0.2);
-      masterTl.fromTo('.masonry-item', { y: 80, opacity: 0, scale: 0.7, rotation: gsap.utils.random(-15, 15), filter: 'blur(15px)' }, { y: 0, opacity: 1, scale: 1, rotation: 0, filter: 'blur(0px)', duration: 1.2, stagger: { amount: 1.2, from: 'random', grid: [masonryColumns, Math.ceil(IMAGES_PER_SECTION / masonryColumns)], ease: 'power2.out' }, ease: 'backOut(1.2)', force3D: true, clearProps: 'transform, filter' }, 0.3);
-      masterTl.to('.art-bg', { rotation: 360, scale: 1.1, duration: 60, repeat: -1, ease: 'none', force3D: true }, 0);
+      
+      // Clean header entrance
+      masterTl.fromTo(headerRef.current, 
+        { y: -50, opacity: 0, scale: 0.9 }, 
+        { y: 0, opacity: 1, scale: 1, duration: 0.8, ease: 'back.out(1.4)' }, 0
+      );
+      
+      // Title with gentle 3D effect
+      masterTl.fromTo(titleRef.current, 
+        { scale: 0.8, opacity: 0, rotationX: 15 }, 
+        { scale: 1, opacity: 1, rotationX: 0, duration: 1, ease: 'back.out(1.2)' }, 0.2
+      );
+      
+      // Professional staggered tile entrance
+      masterTl.fromTo('.masonry-item', 
+        { 
+          y: 40, 
+          opacity: 0, 
+          scale: 0.9, 
+          rotationY: -10 
+        }, 
+        { 
+          y: 0, 
+          opacity: 1, 
+          scale: 1, 
+          rotationY: 0, 
+          duration: 0.6, 
+          stagger: { 
+            amount: 1.2, 
+            from: 'start', 
+            ease: 'power2.out' 
+          }, 
+          ease: 'back.out(1.1)', 
+          clearProps: 'transform' 
+        }, 0.4
+      );
+      
+      // Subtle background rotation
+      masterTl.to('.art-bg', 
+        { rotation: 360, scale: 1.1, duration: 60, repeat: -1, ease: 'none' }, 0
+      );
     });
     return () => ctx.revert();
   }, [mounted, loading, masonryPlan, masonryColumns]);
 
-  // ========== SCROLL ANIMATIONS (unchanged) ==========
-  useEffect(() => {
-    if (!mounted || loading) return;
-    const ctx = gsap.context(() => {
-      const activeScroll = document.querySelector('.swiper-slide-active .collage-scroll');
-      if (!activeScroll) return;
-      gsap.to('.art-bg', { scrollTrigger: { trigger: activeScroll, start: 'top top', end: 'bottom bottom', scrub: 1.5, scroller: activeScroll }, y: 200, rotation: 15, scale: 1.3, force3D: true });
-      gsap.utils.toArray('.swiper-slide-active .masonry-item').forEach((item) => {
-        ScrollTrigger.create({
-          trigger: item, start: 'top 85%', end: 'bottom 15%', toggleActions: 'play reverse play reverse', scroller: activeScroll,
-          onEnter: () => gsap.fromTo(item, { opacity: 0.3, y: 30, scale: 0.95, filter: 'blur(5px)' }, { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.8, ease: 'power3.out', force3D: true }),
-          onLeave: () => gsap.to(item, { opacity: 0.3, y: 20, scale: 0.98, filter: 'blur(3px)', duration: 0.4, force3D: true }),
-          onEnterBack: () => gsap.fromTo(item, { opacity: 0.3, y: 25, scale: 0.96, filter: 'blur(4px)' }, { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.7, ease: 'power2.out', force3D: true })
-        });
-      });
-      
-      // Parallax: add subtle image translate on scroll for visual motion
-      gsap.utils.toArray('.swiper-slide-active .masonry-item img').forEach((img) => {
-        try {
-          gsap.to(img, {
-            y: () => (-(img.clientHeight || 120) * 0.12),
-            ease: 'none',
-            scrollTrigger: {
-              trigger: img.closest('.masonry-item'),
-              scroller: activeScroll,
-              start: 'top bottom',
-              end: 'bottom top',
-              scrub: 0.6
-            }
-          });
-        } catch (e) {
-          // ignore individual item failures
-        }
-      });
-    });
-    ScrollTrigger.refresh();
-    return () => ctx.revert();
-  }, [mounted, loading, currentIndex]);
+  // ========== FRAMER MOTION PARALLAX SCROLL ==========
+  const scrollRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: scrollRef,
+    offset: ["start end", "end start"]
+  });
+  
+  const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
+  const backgroundRotate = useTransform(scrollYProgress, [0, 1], [0, 5]);
+  const backgroundScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
 
-  // ========== HOVER ANIMATIONS (unchanged) ==========
-  useEffect(() => {
-    itemsRef.current.forEach((item) => {
-      if (!item) return;
-      const hoverTl = gsap.timeline({ paused: true });
-      hoverTl.to(item, { y: -6, scale: 1.02, boxShadow: '0 20px 30px -10px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.3)', duration: 0.3, ease: 'power2.out', force3D: true })
-        .to(item.querySelector('img'), { scale: 1.05, duration: 0.4, ease: 'power2.out', force3D: true }, 0)
-        .to(item.querySelector('.absolute.bottom-3'), { y: -3, opacity: 1, duration: 0.3, ease: 'power2.out', force3D: true }, 0);
-      item.addEventListener('mouseenter', () => hoverTl.play());
-      item.addEventListener('mouseleave', () => hoverTl.reverse());
-    });
-    return () => {
-      itemsRef.current.forEach((item) => {
-        if (item) item.removeEventListener('mouseenter', () => {}), item.removeEventListener('mouseleave', () => {});
-      });
-    };
-  }, [masonryPlan, currentIndex]);
+
 
   // ========== ADDITION: GSAP SLIDE CHANGE ANIMATION ==========
   useEffect(() => {
@@ -597,45 +798,80 @@ function App() {
     const activeItems = document.querySelectorAll('.swiper-slide-active .masonry-item');
     if (!activeItems.length) return;
 
-    // Create a random but subtle effect per slide
-    const rnd = (min, max) => Math.random() * (max - min) + min;
-
+    // Subtle reveal for active items
     gsap.fromTo(activeItems,
       {
-        scale: rnd(0.7, 0.9),
-        opacity: 0.3,
-        y: rnd(20, 40),
-        rotation: rnd(-8, 8),
-        filter: 'blur(4px)',
+        scale: 0.95,
+        opacity: 0,
+        y: 20,
+        filter: 'blur(2px)',
       },
       {
         scale: 1,
         opacity: 1,
         y: 0,
-        rotation: 0,
         filter: 'blur(0px)',
-        duration: 1.2,
+        duration: 0.6,
         stagger: {
-          amount: 1.0,
-          from: 'random',
-          grid: [masonryColumns, Math.ceil(activeItems.length / masonryColumns)],
-          ease: 'power3.out',
+          amount: 0.5,
+          from: 'start',
+          ease: 'power2.out',
         },
-        ease: 'backOut(1.2)',
-        clearProps: 'transform, filter', // clean up after animation so hover still works
+        ease: 'power3.out',
+        clearProps: 'transform, filter',
       }
     );
   }, [currentIndex, mounted, loading, masonryColumns]); // runs on every slide change
 
   // ========== MODAL FUNCTIONS ==========
   const openModal = (item) => {
-    setActiveTile({
-      src: item.src,
-      index: item.index,
-      caption: captionPlan[item.index] ?? '',
-      section: currentArtwork.title
-    });
-    gsap.fromTo('.art-modal', { scale: 0.8, opacity: 0, backdropFilter: 'blur(0px)' }, { scale: 1, opacity: 1, backdropFilter: 'blur(12px)', duration: 0.5, ease: 'backOut(1.4)', force3D: true });
+    // Find the clicked tile element
+    const clickedTile = itemsRef.current[item.index];
+    
+    if (clickedTile) {
+      // Create smooth flip animation before opening modal
+      const flipTl = gsap.timeline();
+      flipTl.to(clickedTile, {
+        rotationY: 15,
+        scale: 0.98,
+        duration: 0.2,
+        ease: 'power2.in',
+        transformOrigin: 'center center',
+        onComplete: () => {
+          // Set modal content
+          setActiveTile({
+            src: item.src,
+            index: item.index,
+            caption: captionPlan[item.index] ?? '',
+            section: currentArtwork.title
+          });
+          
+          // Animate modal entrance
+          gsap.fromTo('.art-modal', 
+            { scale: 0.8, opacity: 0, backdropFilter: 'blur(0px)' }, 
+            { scale: 1, opacity: 1, backdropFilter: 'blur(15px)', duration: 0.5, ease: 'back.out(1.3)' }
+          );
+        }
+      })
+      .to(clickedTile, {
+        rotationY: 0,
+        scale: 1,
+        duration: 0.3,
+        ease: 'back.out(1.2)'
+      });
+    } else {
+      // Fallback if tile ref not found
+      setActiveTile({
+        src: item.src,
+        index: item.index,
+        caption: captionPlan[item.index] ?? '',
+        section: currentArtwork.title
+      });
+      gsap.fromTo('.art-modal', 
+        { scale: 0.8, opacity: 0, backdropFilter: 'blur(0px)' }, 
+        { scale: 1, opacity: 1, backdropFilter: 'blur(15px)', duration: 0.5, ease: 'back.out(1.3)' }
+      );
+    }
   };
 
   const closeModal = () => {
@@ -684,26 +920,51 @@ function App() {
         <div className="h-screen w-screen p-3 md:p-6">
           <main className="relative h-full w-full rounded-2xl overflow-hidden">
             <div className="absolute inset-0">
-              <div className="art-bg" />
+              <motion.div 
+                className="art-bg" 
+                style={{
+                  y: backgroundY,
+                  rotate: backgroundRotate,
+                  scale: backgroundScale
+                }}
+              />
+              {/* Canvas particle system — colour synced to current slide accent */}
+              <ParticleCanvas accentColor={SLIDE_ACCENTS[currentIndex % SLIDE_ACCENTS.length]} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20" />
             </div>
 
             <div className="relative z-10 h-full">
               {/* Back button (visible only when intro is hidden) */}
               {!showIntro && (
-                <div className="absolute top-4 left-4 z-20">
+                <div className="absolute top-3 left-3 z-20">
                   <button
                     onClick={() => setShowIntro(true)}
-                    className="px-4 py-2 text-sm bg-white/10 hover:bg-white/20 rounded-md text-white transition-colors backdrop-blur-sm"
+                    className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors backdrop-blur-sm"
+                    aria-label="Back to categories"
                   >
-                    ← Categories
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
                   </button>
                 </div>
               )}
 
               {/* Main Swiper – unchanged */}
               <Swiper
-                modules={[Mousewheel]}
+                modules={[Mousewheel, EffectCreative]}
+                effect="creative"
+                creativeEffect={{
+                  prev: {
+                    shadow: true,
+                    translate: ['-20%', 0, -400],
+                    scale: 0.8,
+                    opacity: 0,
+                  },
+                  next: {
+                    translate: ['100%', 0, 0],
+                    opacity: 0,
+                  },
+                }}
                 direction="horizontal"
                 slidesPerView={1}
                 spaceBetween={0}
@@ -734,31 +995,38 @@ function App() {
                   return (
                     <SwiperSlide key={artwork.id}>
                       <div className="h-full flex flex-col">
-                        <div ref={idx === 0 ? headerRef : null} className="shrink-0 pt-2 md:pt-3 pb-2">
-                          <motion.div ref={idx === 0 ? titleRef : null} className="text-white/95 text-2xl md:text-4xl font-semibold tracking-wide text-center drop-shadow pointer-events-none glow-text lightning-rays" animate={{ textShadow: ['0 0 20px rgba(255,255,255,0.3)', '0 0 40px rgba(255,255,255,0.6)', '0 0 20px rgba(255,255,255,0.3)'] }} transition={{ duration: 4, repeat: Infinity }}>
+                        <div ref={idx === 0 ? headerRef : null} className="shrink-0 pt-12 sm:pt-6 md:pt-3 pb-2 sm:pb-1 px-3">
+                          <motion.div ref={idx === 0 ? titleRef : null} className="text-white/95 text-xl sm:text-2xl md:text-4xl font-semibold tracking-wide text-center drop-shadow pointer-events-none" animate={{ textShadow: ['0 0 20px rgba(255,255,255,0.3)', '0 0 40px rgba(255,255,255,0.6)', '0 0 20px rgba(255,255,255,0.3)'] }} transition={{ duration: 4, repeat: Infinity }}>
                             Our Artwork Collection
                           </motion.div>
-                          <AnimatePresence mode="wait" custom={direction}>
-                            <motion.h2
+                          <AnimatePresence mode="wait">
+                            {/* Word-by-word spring stagger — each word flies up with slight rotate */}
+                            <motion.div
                               key={artwork.id}
-                              custom={direction}
-                              variants={{
-                                initial: dir => ({ opacity:0, y: shouldReduceMotion ? 0 : (dir==='next' ? 20 : -20), filter: 'blur(10px)' }),
-                                animate: { opacity:1, y:0, filter: 'blur(0px)', transition: { duration:0.5, ease:'power3.out' } },
-                                exit: dir => ({ opacity:0, y: shouldReduceMotion ? 0 : (dir==='next' ? -20 : 20), filter: 'blur(10px)', transition: { duration:0.4 } })
-                              }}
-                              initial="initial" animate="animate" exit="exit"
-                              className="mt-2 text-white/70 text-sm md:text-base font-medium tracking-[0.22em] uppercase text-center pointer-events-none"
+                              className="mt-2 flex flex-wrap justify-center gap-x-[0.3em] pointer-events-none"
+                              initial="hidden" animate="visible" exit="exit"
                             >
-                              {artwork.title}
-                            </motion.h2>
+                              {artwork.title.split(' ').map((word, wi) => (
+                                <motion.span
+                                  key={word + wi}
+                                  className="text-white/70 text-xs sm:text-sm md:text-base font-medium tracking-[0.22em] uppercase inline-block overflow-hidden"
+                                  variants={{
+                                    hidden: { opacity: 0, y: shouldReduceMotion ? 0 : 18, rotate: shouldReduceMotion ? 0 : -5, filter: shouldReduceMotion ? 'none' : 'blur(4px)' },
+                                    visible: { opacity: 1, y: 0, rotate: 0, filter: 'blur(0px)', transition: { type: 'spring', stiffness: 280, damping: 22, delay: wi * 0.07 } },
+                                    exit: { opacity: 0, y: shouldReduceMotion ? 0 : -10, transition: { duration: 0.18, delay: wi * 0.03 } },
+                                  }}
+                                >
+                                  {word}
+                                </motion.span>
+                              ))}
+                            </motion.div>
                           </AnimatePresence>
                         </div>
-                        <div className="collage-scroll flex-1" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
+                        <div ref={scrollRef} className="collage-scroll flex-1" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
                           {/* Use CSS multi-column masonry for denser packing */}
                           <div className="masonry-columns" style={{ columnCount: masonryColumns, columnGap: '12px' }}>
-                            {masonry.flat().map((item) => (
-                              <div
+                            {masonry.flat().map((item, index) => (
+                              <motion.div
                                 ref={el => { if (idx === currentIndex) itemsRef.current[item.index] = el; }}
                                 key={`${artwork.id}-${item.uniqueId}`}
                                 className={`masonry-item art-tile ${item.ratio}`}
@@ -766,21 +1034,79 @@ function App() {
                                 role="button" tabIndex={0}
                                 onKeyDown={e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); if (idx === currentIndex) openModal({ ...item, caption: captions[item.index] }); } }}
                                 style={{ display: 'inline-block', width: '100%' }}
+                                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                animate={{ 
+                                  opacity: 1, 
+                                  y: 0, 
+                                  scale: 1,
+                                  transition: { 
+                                    delay: index * 0.05,
+                                    duration: 0.4,
+                                    ease: [0.25, 0.46, 0.45, 0.94]
+                                  }
+                                }}
+                                whileHover={{ 
+                                  y: -4, 
+                                  scale: 1.02,
+                                  boxShadow: "0 12px 25px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.15)",
+                                  transition: { 
+                                    duration: 0.3, 
+                                    ease: "easeOut"
+                                  }
+                                }}
+                                whileTap={{ 
+                                  scale: 0.98,
+                                  transition: { duration: 0.15, ease: "easeInOut" }
+                                }}
                               >
-                                <TileImage src={item.src} alt={artwork.title} index={item.index} fallbackPool={images} />
-                                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 via-black/0 to-transparent" />
-                                <div className="pointer-events-none absolute left-3 right-3 bottom-3">
-                                  <div className="flex items-center gap-2">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/70">
+                              <TileImage src={item.src} alt={artwork.title} index={item.index} fallbackPool={images} />
+                                {/* Enhanced gradient overlay for better text readability */}
+                                <motion.div 
+                                  className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/85 via-black/40 to-transparent"
+                                  initial={{ opacity: 0.8, scaleY: 0.9 }}
+                                  whileHover={{ 
+                                    opacity: 1, 
+                                    scaleY: 1.05,
+                                    transition: { duration: 0.3, ease: "easeOut" }
+                                  }}
+                                />
+                                {/* Enhanced caption with better visibility */}
+                                <motion.div 
+                                  className="pointer-events-none absolute left-3 right-3 bottom-2"
+                                  initial={{ y: 3, opacity: 0.9, scale: 0.98 }}
+                                  whileHover={{ 
+                                    y: -8, 
+                                    opacity: 1, 
+                                    scale: 1.05,
+                                    transition: { 
+                                      duration: 0.4, 
+                                      ease: "backOut",
+                                      type: "spring",
+                                      stiffness: 250,
+                                      damping: 20
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-center gap-3 bg-black/30 backdrop-blur-sm rounded-lg px-3 py-2 border border-white/10">
+                                    <motion.svg 
+                                      width="14" 
+                                      height="14" 
+                                      viewBox="0 0 24 24" 
+                                      fill="none" 
+                                      stroke="currentColor" 
+                                      strokeWidth="2" 
+                                      className="text-white/90 flex-shrink-0"
+                                      whileHover={{ scale: 1.1, rotate: 5 }}
+                                    >
                                       <path d="M12 22s7-5.3 7-12a7 7 0 10-14 0c0 6.7 7 12 7 12z" />
                                       <path d="M12 13.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4z" />
-                                    </svg>
-                                    <div className="text-[11px] md:text-xs text-white/80 font-light tracking-wide line-clamp-1">
-                                      {captions[item.index] ?? ''}
+                                    </motion.svg>
+                                    <div className="text-sm md:text-base text-white font-medium tracking-wide line-clamp-2 leading-relaxed">
+                                      {captions[item.index] ?? 'Untitled Artwork'}
                                     </div>
                                   </div>
-                                </div>
-                              </div>
+                                </motion.div>
+                              </motion.div>
                             ))}
                           </div>
                         </div>
@@ -795,9 +1121,14 @@ function App() {
                 {artworks.map((_, idx) => (
                   <motion.div
                     key={idx}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/40'}`}
-                    animate={idx === currentIndex ? { scale: [1, 1.2, 1] } : {}}
-                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className={`rounded-full transition-all duration-300 relative ${
+                      idx === currentIndex ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/35'
+                    }`}
+                    animate={idx === currentIndex
+                      ? { scale: [1, 1.15, 1], boxShadow: ['0 0 0px 0px rgba(255,255,255,0.4)', '0 0 10px 4px rgba(255,255,255,0.55)', '0 0 0px 0px rgba(255,255,255,0.4)'] }
+                      : { scale: 1, boxShadow: 'none' }
+                    }
+                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
                   />
                 ))}
               </div>
@@ -816,8 +1147,9 @@ function App() {
                     <motion.div
                       className="art-modal-panel"
                       initial={shouldReduceMotion ? { opacity:1 } : { opacity:0, y: 50, scale: 0.8, rotate: -3 }}
-                      animate={shouldReduceMotion ? { opacity:1 } : { opacity:1, y: 0, scale: 1, rotate: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.1 } }}
-                      exit={shouldReduceMotion ? { opacity:0 } : { opacity:0, y: 30, scale: 0.9, rotate: 2, transition: { duration: 0.3 } }}
+                      animate={shouldReduceMotion ? { opacity:1 } : { opacity:1, y: 0, scale: 1, rotate: 0 }}
+                      transition={shouldReduceMotion ? {} : { type: 'spring', stiffness: 340, damping: 22, delay: 0.08 }}
+                      exit={shouldReduceMotion ? { opacity:0 } : { opacity:0, y: 28, scale: 0.88, rotate: 2, transition: { duration: 0.28, ease: 'power2.in' } }}
                       onClick={e => e.stopPropagation()}
                     >
                       <motion.div className="art-hanger" aria-hidden="true" animate={{ rotate: [0, -5, 5, 0], y: [0, -2, 2, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}>

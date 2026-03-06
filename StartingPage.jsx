@@ -14,22 +14,73 @@ const CATEGORY_COVERS = {
 };
 
 const categories = [
-  { idx: 0, title: 'Landscape',         subtitle: "Nature's Canvas",     category: 'Landscape' },
-  { idx: 1, title: 'Abstract',           subtitle: 'Forms & Imagination', category: 'Abstract' },
-  { idx: 2, title: 'Portrait',           subtitle: 'Human Stories',       category: 'Portrait' },
-  { idx: 3, title: 'Conceptual',         subtitle: 'Ideas Made Visual',   category: 'Conceptual' },
-  { idx: 4, title: 'Figurative',         subtitle: 'Body & Movement',     category: 'Figurative' },
-  { idx: 5, title: 'Urban abstraction',  subtitle: 'City Geometry',       category: 'Urban abstraction' },
+  { idx: 0, title: 'Landscape',         subtitle: "Nature's Canvas",     category: 'Landscape',         accent: '#3b82f6' },
+  { idx: 1, title: 'Abstract',           subtitle: 'Forms & Imagination', category: 'Abstract',           accent: '#a855f7' },
+  { idx: 2, title: 'Portrait',           subtitle: 'Human Stories',       category: 'Portrait',           accent: '#10b981' },
+  { idx: 3, title: 'Conceptual',         subtitle: 'Ideas Made Visual',   category: 'Conceptual',         accent: '#ef4444' },
+  { idx: 4, title: 'Figurative',         subtitle: 'Body & Movement',     category: 'Figurative',         accent: '#f59e0b' },
+  { idx: 5, title: 'Urban abstraction',  subtitle: 'City Geometry',       category: 'Urban abstraction',  accent: '#6366f1' },
+];
+
+const BLOB_COLORS = [
+  'rgba(59,130,246,0.12)', 'rgba(168,85,247,0.12)', 'rgba(16,185,129,0.11)',
+  'rgba(239,68,68,0.11)',  'rgba(245,158,11,0.11)', 'rgba(99,102,241,0.12)',
 ];
 
 const headingEnter = [
-  { x: -90, opacity: 0, filter: 'blur(12px)' },
-  { x:  90, opacity: 0, scale: 0.78 },
-  { y: -55, opacity: 0, rotateX: -28 },
-  { y:  55, opacity: 0, rotateX:  28 },
-  { scale: 1.55, opacity: 0, filter: 'blur(16px)' },
-  { opacity: 0, letterSpacing: '0.6em' },
+  { x: -80, opacity: 0, filter: 'blur(8px)' },
+  { x:  80, opacity: 0, filter: 'blur(8px)' },
+  { x: -60, opacity: 0, scale: 0.88 },
+  { x:  60, opacity: 0, scale: 0.88 },
+  { x: -100, opacity: 0 },
+  { x:  100, opacity: 0, letterSpacing: '0.4em' },
 ];
+
+/* SVG icon: octagonal lens / gallery mark */
+function GalleryMark({ accent = '#fff' }) {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <polygon
+        points="16,2 26,7 30,18 26,29 16,30 6,29 2,18 6,7"
+        stroke={accent}
+        strokeWidth="1.2"
+        fill="none"
+        opacity="0.55"
+      />
+      <circle cx="16" cy="16" r="5" stroke={accent} strokeWidth="1.4" fill="none" opacity="0.85" />
+      <circle cx="16" cy="16" r="1.5" fill={accent} opacity="0.9" />
+    </svg>
+  );
+}
+
+/* Animated electric bolt SVG overlay */
+function LightningBolts({ accent }) {
+  return (
+    <svg className="lightning-bolts-svg" viewBox="0 0 520 110" fill="none" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
+      {/* ── Left side bolts ── */}
+      <polyline className="bolt bolt-left"  points="55,55 75,22 88,48 112,4"   stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
+      <polyline className="bolt bolt-left2" points="20,70 38,42 50,60 68,20"   stroke={accent} strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" />
+      {/* ── Right side bolts ── */}
+      <polyline className="bolt bolt-right"  points="465,55 445,22 432,48 408,4"  stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
+      <polyline className="bolt bolt-right2" points="500,70 482,42 470,60 452,20" stroke={accent} strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" />
+      {/* ── Arcing bridges from bolts to heading ── */}
+      <path className="bolt bolt-arc-l" d="M112,4 Q140,2 190,50" stroke={accent} strokeWidth="0.7" fill="none" opacity="0.25" strokeDasharray="4 3" />
+      <path className="bolt bolt-arc-r" d="M408,4 Q380,2 330,50" stroke={accent} strokeWidth="0.7" fill="none" opacity="0.25" strokeDasharray="4 3" />
+      {/* ── Sparkle nodes ── */}
+      <circle className="spark s1" cx="112" cy="4"   r="3"   fill={accent} opacity="0.85" />
+      <circle className="spark s2" cx="408" cy="4"   r="3"   fill={accent} opacity="0.85" />
+      <circle className="spark s3" cx="55"  cy="55"  r="2"   fill={accent} opacity="0.5" />
+      <circle className="spark s4" cx="465" cy="55"  r="2"   fill={accent} opacity="0.5" />
+      <circle className="spark s5" cx="68"  cy="20"  r="1.5" fill={accent} opacity="0.6" />
+      <circle className="spark s6" cx="452" cy="20"  r="1.5" fill={accent} opacity="0.6" />
+      {/* ── Horizontal rays extending to edges ── */}
+      <line className="hray" x1="0"   y1="55" x2="55"  y2="55" stroke={accent} strokeWidth="0.7" opacity="0.22" />
+      <line className="hray" x1="465" y1="55" x2="520" y2="55" stroke={accent} strokeWidth="0.7" opacity="0.22" />
+      <line className="hray" x1="0"   y1="70" x2="20"  y2="70" stroke={accent} strokeWidth="0.5" opacity="0.12" />
+      <line className="hray" x1="500" y1="70" x2="520" y2="70" stroke={accent} strokeWidth="0.5" opacity="0.12" />
+    </svg>
+  );
+}
 
 export default function StartingPage({ onSelectCategory }) {
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -38,16 +89,16 @@ export default function StartingPage({ onSelectCategory }) {
   const imgRef       = useRef(null);
   const isScrolling  = useRef(false);
   const touchStart   = useRef({ y: 0, x: 0, t: 0 });
-  const morphTimer   = useRef(null);
 
   const flakes = useMemo(() => {
-    const count = 28;
+    const count = 55;
     return Array.from({ length: count }, (_, i) => ({
-      left:     `${(i / count) * 96 + 2}%`,
-      width:    `${5 + (i % 5) * 3}px`,
-      duration: `${6 + (i % 7) * 1.4}s`,
-      delay:    `${(i * 0.55) % 9}s`,
-      drift:    `${(i % 3 === 0 ? 1 : i % 3 === 1 ? -1 : 0) * 14}px`,
+      left:     `${(i / count) * 98 + 1}%`,
+      width:    `${3 + (i % 7) * 1.8}px`,
+      duration: `${6 + (i % 9) * 1.1}s`,
+      delay:    `${(i * 0.38) % 10}s`,
+      drift:    `${(i % 3 === 0 ? 1 : i % 3 === 1 ? -1 : 0) * (10 + (i % 4) * 5)}px`,
+      opacity:  `${0.55 + (i % 5) * 0.09}`,
     }));
   }, []);
 
@@ -62,41 +113,51 @@ export default function StartingPage({ onSelectCategory }) {
     isScrolling.current = true;
     setDirection(dir);
     setCurrentIdx(next);
-    setTimeout(() => { isScrolling.current = false; }, 980);
+    setTimeout(() => { isScrolling.current = false; }, 350);
   }, [currentIdx]);
 
-  const applyMorph = useCallback((v) => {
-    if (!imgRef.current) return;
-    const s = 1 + Math.min(Math.abs(v) * 0.0005, 0.08);
-    gsap.to(imgRef.current, { scaleY: s, scaleX: 1 / s, duration: 0.16, ease: 'power2.out', overwrite: true });
-    clearTimeout(morphTimer.current);
-    morphTimer.current = setTimeout(() =>
-      gsap.to(imgRef.current, { scaleY: 1, scaleX: 1, duration: 1.1, ease: 'elastic.out(1,0.42)', overwrite: true }), 170);
-  }, []);
-
   useEffect(() => {
-    let acc = 0, t;
+    let acc = 0, locked = false, timeout;
     const onWheel = (e) => {
       e.preventDefault();
+      if (locked) return;
       acc += e.deltaY + e.deltaX;
-      applyMorph(e.deltaY + e.deltaX);
-      clearTimeout(t);
-      t = setTimeout(() => { if (Math.abs(acc) > 10) navigate(acc > 0 ? 1 : -1); acc = 0; }, 28);
+      if (Math.abs(acc) > 18) {
+        locked = true;
+        navigate(acc > 0 ? 1 : -1);
+        acc = 0;
+        setTimeout(() => { locked = false; }, 380);
+      }
+      clearTimeout(timeout);
+      timeout = setTimeout(() => { acc = 0; }, 150);
     };
     const el = containerRef.current;
     el?.addEventListener('wheel', onWheel, { passive: false });
-    return () => { el?.removeEventListener('wheel', onWheel); clearTimeout(t); };
-  }, [currentIdx, navigate, applyMorph]);
+    return () => { el?.removeEventListener('wheel', onWheel); clearTimeout(timeout); };
+  }, [currentIdx, navigate]);
 
   useEffect(() => {
-    const onStart = (e) => { touchStart.current = { y: e.touches[0].clientY, x: e.touches[0].clientX, t: Date.now() }; };
-    const onMove  = (e) => applyMorph((touchStart.current.y - e.touches[0].clientY) * 2);
-    const onEnd   = (e) => {
+    let swiped = false;
+    const onStart = (e) => {
+      swiped = false;
+      touchStart.current = { y: e.touches[0].clientY, x: e.touches[0].clientX, t: Date.now() };
+    };
+    const onMove = (e) => {
+      if (swiped) return;
+      const dx = touchStart.current.x - e.touches[0].clientX;
+      const dy = touchStart.current.y - e.touches[0].clientY;
+      if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) {
+        swiped = true;
+        navigate(dy > 0 ? 1 : -1);
+      }
+    };
+    const onEnd = (e) => {
+      if (swiped) return;
       const dy = touchStart.current.y - e.changedTouches[0].clientY;
-      const dx = touchStart.current.x - e.changedTouches[0].clientX;
-      const dt = Date.now() - touchStart.current.t;
-      if (Math.max(Math.abs(dy), Math.abs(dx)) > 25 || Math.abs(dy) / dt > 0.25)
-        navigate(dy > 0 || dx > 0 ? 1 : -1);
+      const dt = Math.max(Date.now() - touchStart.current.t, 1);
+      if (Math.abs(dy) > 10 || Math.abs(dy) / dt > 0.08) {
+        navigate(dy > 0 ? 1 : -1);
+      }
     };
     const el = containerRef.current;
     el?.addEventListener('touchstart', onStart, { passive: true });
@@ -107,188 +168,219 @@ export default function StartingPage({ onSelectCategory }) {
       el?.removeEventListener('touchmove', onMove);
       el?.removeEventListener('touchend', onEnd);
     };
-  }, [currentIdx, navigate, applyMorph]);
+  }, [currentIdx, navigate]);
 
   useEffect(() => {
     const onKey = (e) => {
-      if (['ArrowDown','ArrowRight'].includes(e.key)) { applyMorph(80); navigate(1); }
-      if (['ArrowUp','ArrowLeft'].includes(e.key))    { applyMorph(-80); navigate(-1); }
+      if (['ArrowDown','ArrowRight'].includes(e.key)) navigate(1);
+      if (['ArrowUp','ArrowLeft'].includes(e.key))   navigate(-1);
       if (['Enter',' '].includes(e.key)) onSelectCategory(currentIdx);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [currentIdx, navigate, applyMorph, onSelectCategory]);
+  }, [currentIdx, navigate, onSelectCategory]);
 
   const cardVariants = {
-    enter:  (d) => ({ rotateY: d > 0 ? 72 : -72, opacity: 0, scale: 0.88, x: d > 0 ? '10%' : '-10%', filter: 'brightness(0.45)' }),
-    center: {       rotateY: 0, opacity: 1, scale: 1, x: '0%', filter: 'brightness(1)' },
-    exit:   (d) => ({ rotateY: d > 0 ? -72 : 72, opacity: 0, scale: 0.88, x: d > 0 ? '-10%' : '10%', filter: 'brightness(0.45)' }),
+    enter: (d) => ({
+      rotateX: 0,
+      y: d > 0 ? '60px' : '-60px',
+      opacity: 0,
+      scale: 1,
+      filter: 'brightness(1)',
+    }),
+    center: {
+      rotateX: 0,
+      y: '0px',
+      opacity: 1,
+      scale: 1,
+      filter: 'brightness(1)',
+    },
+    exit: (d) => ({
+      rotateX: 0,
+      y: d > 0 ? '-60px' : '60px',
+      opacity: 0,
+      scale: 1,
+      filter: 'brightness(1)',
+    }),
   };
 
   const hEnter = headingEnter[currentIdx % headingEnter.length];
+  const accent = categories[currentIdx].accent;
 
   return (
     <div ref={containerRef} className="relative w-full h-screen overflow-hidden bg-black" style={{ touchAction: 'none' }}>
 
-      {/* Fire flakes */}
+      {/* ── Fire flakes rising from bottom ── */}
       <div className="fire-flakes" aria-hidden="true">
         {flakes.map((f, i) => (
-          <div key={i} className="fire-flake" style={{ left: f.left, width: f.width, height: f.width, animationDuration: f.duration, animationDelay: f.delay, marginLeft: f.drift }} />
+          <div key={i} className="fire-flake" style={{ left: f.left, width: f.width, height: f.width, animationDuration: f.duration, animationDelay: f.delay, marginLeft: f.drift, opacity: f.opacity }} />
         ))}
       </div>
 
-      {/* Ambient lighting */}
-      <div className="intro-lighting-effects" aria-hidden="true">
-        <div className="spotlight-beam" />
-        <div className="light-rays">
-          <div className="light-ray ray-1" />
-          <div className="light-ray ray-2" />
-          <div className="light-ray ray-3" />
-        </div>
-        <div className="ambient-glow">
-          {Array.from({ length: 16 }).map((_, i) => (
-            <div key={i} className="glow-particle" style={{ left:`${8+((i*23)%84)}%`, top:`${8+((i*37)%84)}%`, animationDelay:`${(i*0.7)%5}s`, animationDuration:`${4+(i%3)*1.5}s` }} />
-          ))}
-        </div>
-      </div>
 
-      {/* Heading — pinned to top, separate from card */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex flex-col items-center" style={{ paddingTop: 'clamp(20px, 5vh, 48px)' }}>
-        <AnimatePresence mode="wait">
-          <motion.h1
-            key={`h-${currentIdx}`}
-            className="font-black text-white uppercase select-none text-center"
-            style={{
-              fontSize: 'clamp(1rem, 2.2vw, 1.7rem)',
-              letterSpacing: '0.08em',
-              lineHeight: 1.0,
-              textShadow: '0 0 55px rgba(160,200,255,0.5), 0 3px 0 rgba(0,0,0,0.7)',
-            }}
-            initial={{ ...hEnter }}
-            animate={{ x: 0, y: 0, opacity: 1, scale: 1, filter: 'blur(0px)', rotateX: 0, letterSpacing: '0.08em' }}
-            exit={{ opacity: 0, y: -20, filter: 'blur(8px)', transition: { duration: 0.26 } }}
-            transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-          >
-            Our Artwork Collections
-          </motion.h1>
-        </AnimatePresence>
-        <AnimatePresence mode="wait">
-          <motion.div key={`line-${currentIdx}`}
-            className="mx-auto mt-2 h-[2px] rounded-full"
-            style={{ width: 'clamp(50px, 14vw, 130px)', background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent)' }}
-            initial={{ scaleX: 0, opacity: 0 }}
-            animate={{ scaleX: 1, opacity: 1 }}
-            exit={{ scaleX: 0, opacity: 0 }}
-            transition={{ duration: 0.55, delay: 0.15, ease: [0.22,1,0.36,1] }} />
-        </AnimatePresence>
-      </div>
+      {/* ══════════════════════════════════════════
+          HEADING — pinned to top, black bar
+      ══════════════════════════════════════════ */}
+      <div className="absolute top-0 left-0 right-0 z-30 flex flex-col items-center px-4 sp-heading-bar"
+        style={{
+          paddingTop: 'clamp(18px, 3vh, 28px)',
+          paddingBottom: '12px',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0.85) 85%, transparent 100%)',
+        }}>        {/* ── Top-edge glow line ── */}
+        <div className="sp-heading-topline" style={{ background: `linear-gradient(90deg, transparent 0%, ${accent}99 30%, ${accent} 50%, ${accent}99 70%, transparent 100%)` }} />
+        {/* ── Side accent streaks ── */}
+        <div className="sp-heading-streak sp-heading-streak-l" style={{ background: `linear-gradient(180deg, ${accent}88, transparent)` }} />
+        <div className="sp-heading-streak sp-heading-streak-r" style={{ background: `linear-gradient(180deg, ${accent}88, transparent)` }} />
 
-      {/* Content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ paddingLeft: '12px', paddingRight: '28px', paddingBottom: '16px' }}>
-
-        {/* Colour blob */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Lightning SVG bolts flanking heading */}
+        <div className="relative w-full flex justify-center">
           <AnimatePresence mode="wait">
-            <motion.div key={`blob-${currentIdx}`}
-              className="absolute top-1/4 left-1/5 w-[700px] h-[700px] rounded-full blur-3xl"
-              style={{ background: ['rgba(29,78,216,0.09)','rgba(109,40,217,0.09)','rgba(5,150,105,0.08)','rgba(220,38,38,0.08)','rgba(245,158,11,0.08)','rgba(79,70,229,0.09)'][currentIdx] }}
-              initial={{ opacity: 0, scale: 0.65 }} animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.25 }} transition={{ duration: 1.3, ease: 'easeOut' }} />
+            <motion.div key={`lightning-${currentIdx}`}
+              className="sp-lightning-wrap"
+              initial={{ opacity: 0, scaleX: 0.6 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              exit={{ opacity: 0, scaleX: 0.5 }}
+              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
+              <LightningBolts accent={accent} />
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Heading text */}
+          <AnimatePresence mode="wait">
+            <motion.h1
+              key={`h-${currentIdx}`}
+              className="lightning-rays font-black text-white uppercase select-none text-center relative z-10"
+              style={{
+                fontSize: 'clamp(1rem, 3vw, 1.85rem)',
+                letterSpacing: 'clamp(0.06em, 0.8vw, 0.14em)',
+                lineHeight: 1.15,
+                '--accent': accent,
+              }}
+              initial={{ ...hEnter }}
+              animate={{ x: 0, y: 0, opacity: 1, scale: 1, filter: 'blur(0px)', rotateX: 0, letterSpacing: 'clamp(0.06em, 0.8vw, 0.14em)' }}
+              exit={{ opacity: 0, y: direction > 0 ? -30 : 30, filter: 'blur(6px)', transition: { duration: 0.2 } }}
+              transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+            >
+              Our Artwork Collections
+            </motion.h1>
           </AnimatePresence>
         </div>
 
-        <div className="relative z-10 w-full" style={{ maxWidth: 'min(860px, 96vw)' }}>
+        {/* Animated underline */}
+        <AnimatePresence mode="wait">
+          <motion.div key={`line-${currentIdx}`}
+            className="mx-auto mt-1.5 h-[2px] rounded-full"
+            style={{ width: 'clamp(40px, 12vw, 120px)', background: `linear-gradient(90deg,transparent,${accent}cc,transparent)` }}
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            exit={{ scaleX: 0, opacity: 0 }}
+            transition={{ duration: 0.55, delay: 0.15, ease: [0.22, 1, 0.36, 1] }} />
+        </AnimatePresence>
+      </div>
 
+      {/* ══════════════════════════════════════════
+          MAIN CONTENT AREA
+      ══════════════════════════════════════════ */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center"
+        style={{ paddingLeft: '14px', paddingRight: '14px', paddingTop: 'clamp(80px, 12vh, 110px)', paddingBottom: 'clamp(36px, 5vh, 52px)' }}>
 
-          {/* Ghost number */}
-          <div className="absolute -top-6 -left-2 z-0 select-none font-black leading-none pointer-events-none"
-            style={{ fontSize: 'clamp(5rem, 14vw, 10rem)', color: 'rgba(255,255,255,0.032)', letterSpacing: '-0.05em' }}>
-            {String(currentIdx + 1).padStart(2, '0')}
-          </div>
+        <div className="relative z-10 w-full" style={{ maxWidth: 'min(820px, 94vw)' }}>
 
-          {/* 3D page-turn card */}
-          <div style={{ perspective: '1500px', perspectiveOrigin: '50% 50%' }}>
-            <AnimatePresence custom={direction} initial={false}>
+          {/* ── Scroll card ── */}
+          <div>
+            <AnimatePresence custom={direction} initial={false} mode="wait">
               <motion.div key={currentIdx} custom={direction}
                 variants={cardVariants} initial="enter" animate="center" exit="exit"
-                transition={{ duration: 0.8, ease: [0.25, 0.85, 0.35, 1] }}
-                style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}>
+                transition={{ duration: 0.38, ease: [0.25, 0.46, 0.45, 0.94] }}
+                style={{ willChange: 'transform, opacity' }}>
 
                 <motion.div
-                  className="relative cursor-pointer select-none overflow-hidden"
+                  className="relative cursor-pointer select-none overflow-hidden sp-card"
                   style={{
                     aspectRatio: '16/9',
                     borderRadius: '18px',
-                    border: '1px solid rgba(255,255,255,0.11)',
-                    boxShadow: '0 45px 100px rgba(0,0,0,0.92), 0 0 70px rgba(100,150,255,0.09)',
+                    border: `1px solid ${accent}44`,
+                    boxShadow: `0 40px 100px rgba(0,0,0,0.98), 0 0 0 1px rgba(0,0,0,0.8), 0 0 90px ${accent}28, inset 0 1px 0 rgba(255,255,255,0.09)`,
                   }}
                   onClick={() => onSelectCategory(categories[currentIdx].idx)}
-                  whileTap={{ scale: 0.978 }}
+                  whileTap={{ scale: 0.975 }}
                   onMouseMove={(e) => {
                     const r = e.currentTarget.getBoundingClientRect();
                     const x = (e.clientX - r.left) / r.width - 0.5;
                     const y = (e.clientY - r.top)  / r.height - 0.5;
-                    gsap.to(e.currentTarget, { rotateY: x * 11, rotateX: y * -11, scale: 1.025, duration: 0.38, ease: 'power2.out', transformPerspective: 1500 });
-                    if (imgRef.current) gsap.to(imgRef.current, { x: x * 16, y: y * 11, duration: 0.45, ease: 'power2.out' });
+                    gsap.to(e.currentTarget, { rotateY: x * 6, rotateX: y * -6, scale: 1.015, duration: 0.5, ease: 'power2.out', transformPerspective: 1400 });
+                    if (imgRef.current) gsap.to(imgRef.current, { x: x * 9, y: y * 6, duration: 0.6, ease: 'power2.out' });
                   }}
                   onMouseLeave={(e) => {
-                    gsap.to(e.currentTarget, { rotateY: 0, rotateX: 0, scale: 1, duration: 0.9, ease: 'elastic.out(1,0.5)', transformPerspective: 1500 });
-                    if (imgRef.current) gsap.to(imgRef.current, { x: 0, y: 0, scaleX: 1, scaleY: 1, duration: 0.9, ease: 'elastic.out(1,0.5)' });
+                    gsap.to(e.currentTarget, { rotateY: 0, rotateX: 0, scale: 1, duration: 0.65, ease: 'power2.out', transformPerspective: 1400 });
+                    if (imgRef.current) gsap.to(imgRef.current, { x: 0, y: 0, duration: 0.65, ease: 'power2.out' });
                   }}>
 
-                  {/* Image */}
+                  {/* Cover image with parallax */}
                   <div ref={imgRef} className="absolute inset-0 bg-cover bg-center will-change-transform"
-                    style={{ backgroundImage: `url(${coverImages[currentIdx]})`, transformOrigin: 'center center' }} />
+                    style={{ backgroundImage: `url(${coverImages[currentIdx]})`, transformOrigin: 'center center', transform: 'scale(1.06)' }} />
 
-                  {/* Overlays */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
-                  <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 0%, transparent 55%, rgba(0,0,0,0.4) 100%)' }} />
+                  {/* Overlay stack */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 0%, transparent 52%, rgba(0,0,0,0.45) 100%)' }} />
+                  {/* Accent colour wash */}
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at 80% 80%, ${accent}18, transparent 65%)` }} />
 
-                  {/* Card text */}
+                  {/* Scanline micro-texture */}
+                  <div className="sp-scanlines absolute inset-0 pointer-events-none" />
+
+                  {/* ── Card inscription bottom-left ── */}
                   <AnimatePresence custom={direction} initial={false} mode="wait">
                     <motion.div key={`txt-${currentIdx}`} custom={direction}
-                      initial={(d) => ({ y: d > 0 ? 40 : -40, opacity: 0 })}
-                      animate={{ y: 0, opacity: 1, transition: { delay: 0.3, duration: 0.5, ease: [0.22,1,0.36,1] } }}
-                      exit={(d) => ({ y: d > 0 ? -40 : 40, opacity: 0, transition: { duration: 0.2 } })}
-                      className="absolute bottom-0 left-0 right-0 p-5 md:p-7 z-10">
+                      initial={(d) => ({ y: d > 0 ? 50 : -50, opacity: 0 })}
+                      animate={{ y: 0, opacity: 1, transition: { delay: 0.25, duration: 0.5, ease: [0.22, 1, 0.36, 1] } }}
+                      exit={(d) => ({ y: d > 0 ? -40 : 40, opacity: 0, transition: { duration: 0.18 } })}
+                      className="absolute bottom-0 left-0 right-0 z-10"
+                      style={{ padding: 'clamp(12px, 2.5vw, 28px) clamp(14px, 3.5vw, 36px)' }}>
 
-                      {/* Category label — fully visible */}
+                      {/* Collection index badge */}
                       <motion.p
-                        className="text-[11px] uppercase tracking-[0.28em] text-white font-semibold mb-1.5"
-                        style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
-                        initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.38, duration: 0.4 }}>
-                        {String(currentIdx + 1).padStart(2,'0')} &mdash; Collection
+                        className="uppercase font-bold mb-1"
+                        style={{ fontSize: 'clamp(0.65rem, 1.4vw, 0.78rem)', letterSpacing: '0.28em', color: 'rgba(255,255,255,0.75)', textShadow: '0 1px 8px rgba(0,0,0,1)' }}
+                        initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.36, duration: 0.4 }}>
+                        {String(currentIdx + 1).padStart(2, '0')} / {String(categories.length).padStart(2, '0')} — Collection
                       </motion.p>
 
-                      {/* Section title — one line, compact */}
+                      {/* Category title */}
                       <motion.h2
-                        className="font-black text-white leading-none whitespace-nowrap"
-                        style={{
-                          fontSize: 'clamp(1rem, 2.4vw, 1.75rem)',
-                          textShadow: '0 2px 18px rgba(0,0,0,0.95)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                        initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42, duration: 0.48 }}>
+                        className="font-black text-white leading-tight"
+                        style={{ fontSize: 'clamp(1.4rem, 4vw, 2.4rem)', textShadow: '0 2px 24px rgba(0,0,0,1), 0 0 2px rgba(0,0,0,1)', letterSpacing: '-0.01em' }}
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.5 }}>
                         {categories[currentIdx].title}
                       </motion.h2>
 
                       {/* Subtitle */}
                       <motion.p
-                        className="text-xs text-white/80 font-medium mt-1 tracking-wide"
-                        style={{ textShadow: '0 1px 6px rgba(0,0,0,0.9)' }}
-                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.4 }}>
+                        className="font-semibold mt-1.5"
+                        style={{ fontSize: 'clamp(0.7rem, 1.4vw, 0.85rem)', color: 'rgba(255,255,255,0.82)', textShadow: '0 1px 8px rgba(0,0,0,1)', letterSpacing: '0.18em' }}
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.48, duration: 0.42 }}>
                         {categories[currentIdx].subtitle}
                       </motion.p>
 
+                      {/* CTA button */}
                       <motion.button
                         onClick={(e) => { e.stopPropagation(); onSelectCategory(categories[currentIdx].idx); }}
-                        className="mt-4 inline-flex items-center gap-2 px-5 py-2 bg-white/90 hover:bg-white rounded-full text-black text-xs font-bold tracking-wide shadow-xl transition-colors"
-                        initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.58, duration: 0.38 }}
-                        whileHover={{ scale: 1.08, x: 5 }} whileTap={{ scale: 0.93 }}>
+                        className="mt-4 inline-flex items-center gap-2 rounded-full font-bold tracking-wider shadow-2xl sp-cta-btn"
+                        style={{
+                          padding: 'clamp(7px, 1.1vh, 12px) clamp(16px, 2.8vw, 28px)',
+                          fontSize: 'clamp(0.72rem, 1.3vw, 0.82rem)',
+                          background: 'rgba(255,255,255,0.96)',
+                          color: '#0a0a0a',
+                          border: `1px solid ${accent}55`,
+                          boxShadow: `0 0 22px ${accent}55`,
+                        }}
+                        initial={{ opacity: 0, scale: 0.82 }} animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.56, duration: 0.4 }}
+                        whileHover={{ scale: 1.07, x: 4, boxShadow: `0 0 32px ${accent}88` }}
+                        whileTap={{ scale: 0.94 }}>
                         Explore Collection
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M13 6l6 6-6 6" />
                         </svg>
                       </motion.button>
                     </motion.div>
@@ -298,57 +390,53 @@ export default function StartingPage({ onSelectCategory }) {
             </AnimatePresence>
           </div>
 
-          {/* Bottom bar: dots + counter */}
+          {/* ── Progress bar + dots ── */}
           <AnimatePresence mode="wait">
             <motion.div key={`bar-${currentIdx}`}
-              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              transition={{ delay: 0.36, duration: 0.44 }}
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              transition={{ delay: 0.3, duration: 0.44 }}
               className="mt-4 flex items-center justify-between px-1">
 
+              {/* Dot selector */}
               <div className="flex gap-2 items-center">
-                {categories.map((_, i) => (
+                {categories.map((cat, i) => (
                   <button key={i}
                     onClick={() => { setDirection(i > currentIdx ? 1 : -1); setCurrentIdx(i); }}
-                    className={`transition-all duration-300 rounded-full ${
-                      i === currentIdx
-                        ? 'w-7 h-1.5 bg-white shadow-[0_0_8px_rgba(255,255,255,0.6)]'
-                        : 'w-1.5 h-1.5 bg-white/25 hover:bg-white/55'
-                    }`} />
+                    aria-label={`Go to ${cat.title}`}
+                    className="transition-all duration-300 rounded-full"
+                    style={{
+                      width: i === currentIdx ? '28px' : '6px',
+                      height: '5px',
+                      background: i === currentIdx ? accent : 'rgba(255,255,255,0.2)',
+                      boxShadow: i === currentIdx ? `0 0 10px ${accent}88` : 'none',
+                    }} />
                 ))}
               </div>
 
-              <span className="font-mono text-xs tracking-widest text-white/40 select-none">
-                {String(currentIdx + 1).padStart(2,'0')}
-                <span className="mx-1.5 text-white/20">/</span>
-                {String(categories.length).padStart(2,'0')}
+              {/* counter */}
+              <span className="font-mono text-white/40 select-none" style={{ fontSize: '0.62rem', letterSpacing: '0.2em' }}>
+                {String(currentIdx + 1).padStart(2,'0')}&nbsp;/&nbsp;{String(categories.length).padStart(2,'0')}
               </span>
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
 
-      {/* Right dot nav */}
-      <div className="fixed right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-3">
-        {categories.map((_, i) => (
-          <button key={i}
-            title={categories[i].title}
-            onClick={() => { setDirection(i > currentIdx ? 1 : -1); setCurrentIdx(i); }}
-            className={`rounded-full transition-all duration-300 ${
-              i === currentIdx ? 'w-1.5 h-6 bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'w-1.5 h-1.5 bg-white/25 hover:bg-white/55'
-            }`} />
-        ))}
-      </div>
 
-      {/* Scroll hint */}
+      {/* ── Swipe / navigate hint (first slide only) ── */}
       {currentIdx === 0 && (
-        <motion.div className="fixed bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 text-white/25 select-none z-40"
-          animate={{ y: [0, 7, 0] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}>
-          <span className="text-[9px] tracking-[0.3em] uppercase">Scroll</span>
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
+        <motion.div
+          className="fixed bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 select-none z-40"
+          animate={{ y: [0, 6, 0] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}>
+          {}
+          <div className="sp-scroll-ring" style={{ borderColor: `${accent}55` }}>
+            <div className="sp-scroll-ring-dot" style={{ background: accent }} />
+          </div>
+          <span className="text-white/28 uppercase" style={{ fontSize: '0.55rem', letterSpacing: '0.32em' }}>Scroll</span>
         </motion.div>
       )}
     </div>
   );
 }
+
