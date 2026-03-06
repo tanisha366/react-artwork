@@ -1060,22 +1060,16 @@ function App() {
                                 }}
                               >
                               <TileImage src={item.src} alt={artwork.title} index={item.index} fallbackPool={images} />
-                                {/* Minimal gradient only at bottom edge for text readability */}
-                                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
-                                {/* Clean text overlay without background box */}
+                                {/* Simple text overlay */}
                                 <motion.div 
                                   className="pointer-events-none absolute left-2 right-2 bottom-2"
                                   initial={{ opacity: 1 }}
                                   whileHover={{ 
                                     opacity: 1,
-                                    y: -2,
                                     transition: { duration: 0.2, ease: "easeOut" }
                                   }}
                                 >
-                                  <div className="text-xs sm:text-sm md:text-base text-white font-medium tracking-wide line-clamp-2 leading-tight" 
-                                       style={{ 
-                                         textShadow: '1px 1px 3px rgba(0,0,0,0.8), 0px 0px 8px rgba(0,0,0,0.6)' 
-                                       }}>
+                                  <div className="text-sm text-white font-normal line-clamp-2">
                                     {captions[item.index] ?? 'Untitled Artwork'}
                                   </div>
                                 </motion.div>
