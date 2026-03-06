@@ -1060,19 +1060,6 @@ function App() {
                                 }}
                               >
                               <TileImage src={item.src} alt={artwork.title} index={item.index} fallbackPool={images} />
-                                {/* Simple text overlay */}
-                                <motion.div 
-                                  className="pointer-events-none absolute left-2 right-2 bottom-2"
-                                  initial={{ opacity: 1 }}
-                                  whileHover={{ 
-                                    opacity: 1,
-                                    transition: { duration: 0.2, ease: "easeOut" }
-                                  }}
-                                >
-                                  <div className="text-sm text-white font-normal line-clamp-2">
-                                    {captions[item.index] ?? 'Untitled Artwork'}
-                                  </div>
-                                </motion.div>
                               </motion.div>
                             ))}
                           </div>
