@@ -866,14 +866,6 @@ function App() {
 
       {!showIntro && (
       <div ref={mainContainerRef} className="h-screen w-screen overflow-hidden bg-stone-950">
-        {/* Floating background elements */}
-        <div className="bg-elements">
-          <div className="bg-element"></div>
-          <div className="bg-element"></div>
-          <div className="bg-element"></div>
-          <div className="bg-element"></div>
-        </div>
-        
         <div className="h-screen w-screen p-3 md:p-6">
           <main className="relative h-full w-full rounded-2xl overflow-hidden">
             <div className="absolute inset-0">

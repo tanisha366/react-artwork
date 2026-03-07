@@ -210,8 +210,57 @@ export default function StartingPage({ onSelectCategory }) {
   return (
     <div ref={containerRef} className="relative w-full h-screen overflow-hidden bg-black" style={{ touchAction: 'none' }}>
 
+      {/* ── Full-screen dynamic background — changes with each category ── */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+
+        {/* Each category image as a full-screen blurred backdrop — only active one is visible */}
+        {coverImages.map((src, i) => (
+          <motion.div
+            key={i}
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `url(${src})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              filter: 'blur(22px) saturate(1.4) brightness(0.75)',
+              transform: 'scale(1.12)',
+            }}
+            animate={{ opacity: i === currentIdx ? 1 : 0 }}
+            transition={{ duration: 0.9, ease: 'easeInOut' }}
+          />
+        ))}
+
+        {/* Deep vignette — darkens edges, keeps centre bright */}
+        <div className="absolute inset-0" style={{
+          background: 'radial-gradient(ellipse 75% 75% at 50% 50%, transparent 30%, rgba(0,0,0,0.7) 100%)',
+        }} />
+
+        {/* Top & bottom dark bars so heading and nav are readable */}
+        <div className="absolute inset-x-0 top-0 h-40" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.85), transparent)' }} />
+        <div className="absolute inset-x-0 bottom-0 h-40" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }} />
+
+        {/* Animated accent colour pulse in centre */}
+        <motion.div
+          className="absolute inset-0"
+          style={{ background: `radial-gradient(ellipse 60% 60% at 50% 50%, ${accent}30, transparent 70%)` }}
+          animate={{ opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          key={`pulse-${currentIdx}`}
+        />
+
+        {/* Slow-rotating diagonal light streak */}
+        <motion.div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(115deg, transparent 30%, ${accent}18 50%, transparent 70%)`,
+          }}
+          animate={{ x: ['-100%', '100%'] }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', repeatDelay: 2 }}
+        />
+      </div>
+
       {/* ── Fire flakes rising from bottom ── */}
-      <div className="fire-flakes" aria-hidden="true">
+      <div className="fire-flakes z-10" aria-hidden="true">
         {flakes.map((f, i) => (
           <div key={i} className="fire-flake" style={{ left: f.left, width: f.width, height: f.width, animationDuration: f.duration, animationDelay: f.delay, marginLeft: f.drift, opacity: f.opacity }} />
         ))}
