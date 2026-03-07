@@ -23,8 +23,19 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #0c0a09;
+  background: 
+    radial-gradient(circle at 25% 25%, rgba(255, 215, 160, 0.02) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(245, 158, 11, 0.015) 0%, transparent 50%),
+    linear-gradient(135deg, #0c0a09 0%, #1a1410 25%, #0f0d0a 50%, #1e1611 75%, #0c0a09 100%);
+  background-size: 800px 800px, 600px 600px, 400% 400%;
+  animation: graduateBackground 20s ease infinite;
   overflow: hidden;
+}
+
+@keyframes graduateBackground {
+  0% { background-position: 0% 50%, 100% 0%, 0% 50%; }
+  50% { background-position: 100% 50%, 0% 100%, 100% 50%; }
+  100% { background-position: 0% 50%, 100% 0%, 0% 50%; }
 }
 
 .intro-fire-flakes {
@@ -107,6 +118,66 @@ body {
   transform: translate3d(0, 0, 0);
 }
 
+/* Floating background elements for visual interest */
+.bg-elements {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.bg-element {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 215, 160, 0.03) 0%, rgba(255, 140, 70, 0.01) 70%, transparent 100%);
+  animation: floatElement linear infinite;
+}
+
+.bg-element:nth-child(1) {
+  width: 120px;
+  height: 120px;
+  top: 10%;
+  left: 15%;
+  animation-duration: 25s;
+  animation-delay: -1s;
+}
+
+.bg-element:nth-child(2) {
+  width: 80px;
+  height: 80px;
+  top: 70%;
+  right: 20%;
+  animation-duration: 30s;
+  animation-delay: -8s;
+}
+
+.bg-element:nth-child(3) {
+  width: 100px;
+  height: 100px;
+  bottom: 20%;
+  left: 5%;
+  animation-duration: 35s;
+  animation-delay: -15s;
+}
+
+.bg-element:nth-child(4) {
+  width: 60px;
+  height: 60px;
+  top: 30%;
+  right: 10%;
+  animation-duration: 40s;
+  animation-delay: -22s;
+}
+
+@keyframes floatElement {
+  0% { transform: translateY(0px) rotate(0deg) scale(1); opacity: 0.8; }
+  25% { transform: translateY(-20px) rotate(90deg) scale(1.1); opacity: 0.6; }
+  50% { transform: translateY(-10px) rotate(180deg) scale(0.9); opacity: 0.8; }
+  75% { transform: translateY(-30px) rotate(270deg) scale(1.05); opacity: 0.4; }
+  100% { transform: translateY(0px) rotate(360deg) scale(1); opacity: 0.8; }
+}
+
 /* ========== PROFESSIONAL MASONRY GRID - 5 COLUMNS ========== */
 .masonry-grid {
   display: flex;
@@ -150,8 +221,7 @@ body {
   /* Remove opacity control - let Framer Motion handle it */
 }
 .masonry-media.is-loaded {
-  /* Image loaded state - enhance visibility */
-  filter: contrast(1.02) brightness(1.01);
+  /* Image loaded state - Framer Motion will handle opacity */
 }
 
 .masonry-col {
@@ -1410,100 +1480,48 @@ body {
    TILE HOVER ENHANCEMENTS
 ══════════════════════════════════════════════════ */
 
-/* Clean masonry item styling without jarring outlines */
+/* "View" label — hidden until GSAP hover timeline reveals it */
+.art-view-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) translateY(8px);
+  opacity: 0; /* GSAP drives opacity + y to 0 on hover */
+  pointer-events: none;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 100px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Tile glow ring on hover — extra CSS layer on top of GSAP boxShadow */
 .masonry-item {
   position: relative;
   overflow: hidden;
   will-change: transform;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  perspective: 1000px;
-  transform-style: preserve-3d;
-  border-radius: 12px;
-  background: rgba(30, 30, 30, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: outline-color 0.3s ease;
+  outline: 1.5px solid transparent;
+  outline-offset: 0px;
 }
 .masonry-item:hover {
-  box-shadow: 
-    0 8px 20px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
+  outline-color: rgba(255, 255, 255, 0.18);
 }
 
-/* Remove focus outlines that create unwanted lines */
-.masonry-item:focus {
-  outline: none;
-}
-
-/* Clean click feedback without visible lines */
-.masonry-item:active {
-  transform: translateY(-1px) scale(0.99);
-}
-
-/* Add a subtle glow overlay on hover */
-.masonry-item::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  background: linear-gradient(135deg, 
-    rgba(255, 255, 255, 0.12) 0%, 
-    rgba(255, 255, 255, 0.04) 50%, 
-    rgba(255, 255, 255, 0.08) 100%);
-  border-radius: inherit;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  z-index: 1;
-}
-.masonry-item:hover::before {
-  opacity: 1;
-}
-
-/* Premium shimmer effect */
-.masonry-item::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 70%;
-  height: 100%;
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    rgba(255, 255, 255, 0.1) 20%,
-    rgba(255, 255, 255, 0.25) 40%,
-    rgba(255, 255, 255, 0.3) 50%,
-    rgba(255, 255, 255, 0.25) 60%,
-    rgba(255, 255, 255, 0.1) 80%,
-    transparent 100%);
-  pointer-events: none;
-  z-index: 4;
-  transition: left 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: inherit;
-}
-.masonry-item:hover::after {
-  left: 100%;
-}
-
-/* Premium masonry media with enhanced 3D */
+/* Prevent image from bleeding outside tile during GSAP rotate */
 .masonry-media {
-  width: 95%;
-  height: 95%;
-  margin: 2.5%;
   transform-origin: center center;
-  position: relative;
-  z-index: 2;
-  backface-visibility: hidden;
-  border-radius: inherit;
-  will-change: transform, filter;
-  perspective: 1000px;
-  transform-style: preserve-3d;
-  transition: filter 0.3s ease;
-}
-
-/* Enhanced hover state for images */
-.masonry-item:hover .masonry-media {
-  filter: contrast(1.05) brightness(1.03) saturate(1.02);
+  will-change: transform;
 }
 
 /* ══════════════════════════════════════════════════

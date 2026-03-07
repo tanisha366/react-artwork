@@ -4,7 +4,7 @@ import "swiper/css";
 import "swiper/css/effect-cards";
 import "swiper/css/effect-creative";
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform, useSpring } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { createRoot } from 'react-dom/client';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -169,16 +169,11 @@ function TileImage({ src, alt, index, fallbackPool = [] }) {
   }, [ref]);
 
   const variants = {
-    hidden: { opacity: 0, y: 30, scale: 0.9, rotateY: -10 },
+    // Fly in from below with rotation + blur — resolves on enter
+    hidden: { opacity: 0, y: 36, scale: 0.96, rotate: -1.5, filter: 'blur(7px)' },
     visible: {
-      opacity: 1, y: 0, scale: 1, rotateY: 0,
-      transition: { 
-        duration: 0.6, 
-        ease: [0.25, 0.46, 0.45, 0.94],
-        delay: index * 0.03,
-        type: "spring",
-        stiffness: 120
-      },
+      opacity: 1, y: 0, scale: 1, rotate: 0, filter: 'blur(0px)',
+      transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] },
     },
   };
 
@@ -192,14 +187,6 @@ function TileImage({ src, alt, index, fallbackPool = [] }) {
       initial="hidden"
       animate={reduce ? 'visible' : (inView ? 'visible' : 'hidden')}
       variants={variants}
-      whileHover={{ 
-        scale: 1.03,
-        filter: "brightness(1.06) contrast(1.04) saturate(1.03)",
-        transition: { 
-          duration: 0.3, 
-          ease: "easeOut"
-        }
-      }}
     />
   );
 }
@@ -727,68 +714,70 @@ function App() {
     seed: (currentIndex+1)*4242 + refreshKey
   }), [sectionImages, masonryColumns, currentIndex, refreshKey]);
 
-  // ========== ENHANCED ENTRANCE ANIMATIONS ==========
+  // ========== GSAP INITIAL LOAD ANIMATION (unchanged) ==========
   useEffect(() => {
     if (!mounted || loading || !masonryPlan) return;
     const ctx = gsap.context(() => {
       const masterTl = gsap.timeline();
-      
-      // Clean header entrance
-      masterTl.fromTo(headerRef.current, 
-        { y: -50, opacity: 0, scale: 0.9 }, 
-        { y: 0, opacity: 1, scale: 1, duration: 0.8, ease: 'back.out(1.4)' }, 0
-      );
-      
-      // Title with gentle 3D effect
-      masterTl.fromTo(titleRef.current, 
-        { scale: 0.8, opacity: 0, rotationX: 15 }, 
-        { scale: 1, opacity: 1, rotationX: 0, duration: 1, ease: 'back.out(1.2)' }, 0.2
-      );
-      
-      // Professional staggered tile entrance
-      masterTl.fromTo('.masonry-item', 
-        { 
-          y: 40, 
-          opacity: 0, 
-          scale: 0.9, 
-          rotationY: -10 
-        }, 
-        { 
-          y: 0, 
-          opacity: 1, 
-          scale: 1, 
-          rotationY: 0, 
-          duration: 0.6, 
-          stagger: { 
-            amount: 1.2, 
-            from: 'start', 
-            ease: 'power2.out' 
-          }, 
-          ease: 'back.out(1.1)', 
-          clearProps: 'transform' 
-        }, 0.4
-      );
-      
-      // Subtle background rotation
-      masterTl.to('.art-bg', 
-        { rotation: 360, scale: 1.1, duration: 60, repeat: -1, ease: 'none' }, 0
-      );
+      masterTl.fromTo(headerRef.current, { y: -100, opacity: 0, scale: 0.8, filter: 'blur(10px)' }, { y: 0, opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.2, ease: 'power3.out', force3D: true }, 0);
+      masterTl.fromTo(titleRef.current, { scale: 0.5, opacity: 0, rotationX: 30, filter: 'blur(15px)' }, { scale: 1, opacity: 1, rotationX: 0, filter: 'blur(0px)', duration: 1.4, ease: 'backOut(1.7)', force3D: true }, 0.2);
+      masterTl.fromTo('.masonry-item', { y: 30, opacity: 0, scale: 0.95, filter: 'blur(3px)' }, { y: 0, opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.7, stagger: { amount: 0.8, from: 'start', ease: 'power2.out' }, ease: 'power3.out', force3D: true, clearProps: 'transform, filter' }, 0.3);
+      masterTl.to('.art-bg', { rotation: 360, scale: 1.1, duration: 60, repeat: -1, ease: 'none', force3D: true }, 0);
     });
     return () => ctx.revert();
   }, [mounted, loading, masonryPlan, masonryColumns]);
 
-  // ========== FRAMER MOTION PARALLAX SCROLL ==========
-  const scrollRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: scrollRef,
-    offset: ["start end", "end start"]
-  });
-  
-  const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
-  const backgroundRotate = useTransform(scrollYProgress, [0, 1], [0, 5]);
-  const backgroundScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
+  // ========== SCROLL ANIMATIONS — horizontal swipe effect ==========
+  useEffect(() => {
+    if (!mounted || loading) return;
+    const ctx = gsap.context(() => {
+      const activeScroll = document.querySelector('.swiper-slide-active .collage-scroll');
+      if (!activeScroll) return;
+      gsap.to('.art-bg', { scrollTrigger: { trigger: activeScroll, start: 'top top', end: 'bottom bottom', scrub: 1.5, scroller: activeScroll }, y: 200, rotation: 15, scale: 1.3, force3D: true });
 
+      // Horizontal swipe reveal: items slide in from left
+      gsap.utils.toArray('.swiper-slide-active .masonry-item').forEach((item, i) => {
+        gsap.set(item, { opacity: 1, x: 0, rotationY: 0, filter: 'none' });
+        ScrollTrigger.create({
+          trigger: item, start: 'top 90%', scroller: activeScroll,
+          once: true,
+          onEnter: () => gsap.fromTo(item,
+            { opacity: 0, x: -60, rotationY: -15 },
+            { opacity: 1, x: 0, rotationY: 0, duration: 0.7, ease: 'power3.out', force3D: true, clearProps: 'transform, filter' }
+          ),
+        });
+      });
+    });
+    ScrollTrigger.refresh();
+    return () => ctx.revert();
+  }, [mounted, loading, currentIndex]);
 
+  // ========== HOVER ANIMATIONS ==========
+  useEffect(() => {
+    const cleanups = [];
+    itemsRef.current.forEach((item) => {
+      if (!item) return;
+      const media = item.querySelector('.masonry-media') || item.querySelector('img');
+      const viewLabel = item.querySelector('.art-view-label');
+      const caption = item.querySelector('.absolute.bottom-3');
+      const hoverTl = gsap.timeline({ paused: true });
+      hoverTl
+        .to(item, { y: -6, scale: 1.02, boxShadow: '0 20px 40px -8px rgba(0,0,0,0.75), 0 0 0 1.5px rgba(255,255,255,0.22)', duration: 0.3, ease: 'power2.out', force3D: true })
+        .to(media, { scale: 1.07, rotate: 1.2, duration: 0.38, ease: 'power2.out', force3D: true }, 0)
+        .to(viewLabel, { opacity: 1, y: 0, duration: 0.28, ease: 'power2.out' }, 0)
+        .to(caption, { y: -3, opacity: 1, duration: 0.28, ease: 'power2.out', force3D: true }, 0);
+      const enter = () => hoverTl.play();
+      const leave = () => hoverTl.reverse();
+      item.addEventListener('mouseenter', enter);
+      item.addEventListener('mouseleave', leave);
+      cleanups.push(() => {
+        item.removeEventListener('mouseenter', enter);
+        item.removeEventListener('mouseleave', leave);
+        hoverTl.kill();
+      });
+    });
+    return () => cleanups.forEach(fn => fn());
+  }, [masonryPlan, currentIndex]);
 
   // ========== ADDITION: GSAP SLIDE CHANGE ANIMATION ==========
   useEffect(() => {
@@ -825,53 +814,13 @@ function App() {
 
   // ========== MODAL FUNCTIONS ==========
   const openModal = (item) => {
-    // Find the clicked tile element
-    const clickedTile = itemsRef.current[item.index];
-    
-    if (clickedTile) {
-      // Create smooth flip animation before opening modal
-      const flipTl = gsap.timeline();
-      flipTl.to(clickedTile, {
-        rotationY: 15,
-        scale: 0.98,
-        duration: 0.2,
-        ease: 'power2.in',
-        transformOrigin: 'center center',
-        onComplete: () => {
-          // Set modal content
-          setActiveTile({
-            src: item.src,
-            index: item.index,
-            caption: captionPlan[item.index] ?? '',
-            section: currentArtwork.title
-          });
-          
-          // Animate modal entrance
-          gsap.fromTo('.art-modal', 
-            { scale: 0.8, opacity: 0, backdropFilter: 'blur(0px)' }, 
-            { scale: 1, opacity: 1, backdropFilter: 'blur(15px)', duration: 0.5, ease: 'back.out(1.3)' }
-          );
-        }
-      })
-      .to(clickedTile, {
-        rotationY: 0,
-        scale: 1,
-        duration: 0.3,
-        ease: 'back.out(1.2)'
-      });
-    } else {
-      // Fallback if tile ref not found
-      setActiveTile({
-        src: item.src,
-        index: item.index,
-        caption: captionPlan[item.index] ?? '',
-        section: currentArtwork.title
-      });
-      gsap.fromTo('.art-modal', 
-        { scale: 0.8, opacity: 0, backdropFilter: 'blur(0px)' }, 
-        { scale: 1, opacity: 1, backdropFilter: 'blur(15px)', duration: 0.5, ease: 'back.out(1.3)' }
-      );
-    }
+    setActiveTile({
+      src: item.src,
+      index: item.index,
+      caption: captionPlan[item.index] ?? '',
+      section: currentArtwork.title
+    });
+    gsap.fromTo('.art-modal', { scale: 0.8, opacity: 0, backdropFilter: 'blur(0px)' }, { scale: 1, opacity: 1, backdropFilter: 'blur(12px)', duration: 0.5, ease: 'backOut(1.4)', force3D: true });
   };
 
   const closeModal = () => {
@@ -917,17 +866,18 @@ function App() {
 
       {!showIntro && (
       <div ref={mainContainerRef} className="h-screen w-screen overflow-hidden bg-stone-950">
+        {/* Floating background elements */}
+        <div className="bg-elements">
+          <div className="bg-element"></div>
+          <div className="bg-element"></div>
+          <div className="bg-element"></div>
+          <div className="bg-element"></div>
+        </div>
+        
         <div className="h-screen w-screen p-3 md:p-6">
           <main className="relative h-full w-full rounded-2xl overflow-hidden">
             <div className="absolute inset-0">
-              <motion.div 
-                className="art-bg" 
-                style={{
-                  y: backgroundY,
-                  rotate: backgroundRotate,
-                  scale: backgroundScale
-                }}
-              />
+              <div className="art-bg" />
               {/* Canvas particle system — colour synced to current slide accent */}
               <ParticleCanvas accentColor={SLIDE_ACCENTS[currentIndex % SLIDE_ACCENTS.length]} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20" />
@@ -1022,11 +972,11 @@ function App() {
                             </motion.div>
                           </AnimatePresence>
                         </div>
-                        <div ref={scrollRef} className="collage-scroll flex-1" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
+                        <div className="collage-scroll flex-1" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
                           {/* Use CSS multi-column masonry for denser packing */}
                           <div className="masonry-columns" style={{ columnCount: masonryColumns, columnGap: '12px' }}>
-                            {masonry.flat().map((item, index) => (
-                              <motion.div
+                            {masonry.flat().map((item) => (
+                              <div
                                 ref={el => { if (idx === currentIndex) itemsRef.current[item.index] = el; }}
                                 key={`${artwork.id}-${item.uniqueId}`}
                                 className={`masonry-item art-tile ${item.ratio}`}
@@ -1034,33 +984,23 @@ function App() {
                                 role="button" tabIndex={0}
                                 onKeyDown={e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); if (idx === currentIndex) openModal({ ...item, caption: captions[item.index] }); } }}
                                 style={{ display: 'inline-block', width: '100%' }}
-                                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                                animate={{ 
-                                  opacity: 1, 
-                                  y: 0, 
-                                  scale: 1,
-                                  transition: { 
-                                    delay: index * 0.05,
-                                    duration: 0.4,
-                                    ease: [0.25, 0.46, 0.45, 0.94]
-                                  }
-                                }}
-                                whileHover={{ 
-                                  y: -4, 
-                                  scale: 1.02,
-                                  boxShadow: "0 12px 25px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.15)",
-                                  transition: { 
-                                    duration: 0.3, 
-                                    ease: "easeOut"
-                                  }
-                                }}
-                                whileTap={{ 
-                                  scale: 0.98,
-                                  transition: { duration: 0.15, ease: "easeInOut" }
-                                }}
                               >
                               <TileImage src={item.src} alt={artwork.title} index={item.index} fallbackPool={images} />
-                              </motion.div>
+                                {/* "View" label — hidden by default, revealed by GSAP hover timeline */}
+                                <div className="art-view-label" aria-hidden="true">View</div>
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 via-black/0 to-transparent" />
+                                <div className="pointer-events-none absolute left-3 right-3 bottom-3">
+                                  <div className="flex items-center gap-2">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/70">
+                                      <path d="M12 22s7-5.3 7-12a7 7 0 10-14 0c0 6.7 7 12 7 12z" />
+                                      <path d="M12 13.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4z" />
+                                    </svg>
+                                    <div className="text-[11px] md:text-xs text-white/80 font-light tracking-wide line-clamp-1">
+                                      {captions[item.index] ?? ''}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             ))}
                           </div>
                         </div>
